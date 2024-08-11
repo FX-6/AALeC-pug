@@ -13,12 +13,12 @@ enum class DoctypeDialect {
 };
 
 /**
- * @brief The Parser
+ * @brief Scanner class that parses a .pug file
  */
 class Parser {
    private:
     /**
-     * @brief Path to the .html file
+     * @brief The file to write the HTML to
      */
     File outFile_;
 
@@ -61,9 +61,9 @@ class Parser {
     /**
      * @brief Construct a new Parser object
      *
-     * @param input
-     * @param output
-     * @param doctype
+     * @param inPath Path to the file that should be compiled
+     * @param outPath Path to the output file
+     * @param doctype The HTML dialect, defaults to no dialect (DoctypeDialect::None)
      */
     Parser(
         String inPath,
@@ -84,23 +84,23 @@ class Parser {
    private:
     /**
      * @brief Get the next (aka first) token from the vector and remove it
-     * @param tokens
-     * @return Token
+     * @param tokens The vector of tokens
+     * @return Token The next token
      */
     Token nextToken(std::vector<Token> *tokens);
 
     /**
-     * @brief Wheter the tag is a void element defaultly
+     * @brief Whether the tag is a void element by default
      *        eg: img, br
      *
-     * @param tag
-     * @return true
-     * @return false
+     * @param tag The tag
+     * @return true Its a void element by default
+     * @return false Its not a void element by default
      */
     bool isVoidElement(String tag);
 
     /**
-     * @brief Close the last opened tag if it wasnt indentet
+     * @brief Close the last opened tag
      */
     void closeTag();
 
@@ -112,43 +112,43 @@ class Parser {
     /**
      * @brief Handle the text newline
      *
-     * @param isPipeText
-     * @param isLiteralHTML
+     * @param isPipeText Wheter this is pipe text or not, defaults to false
+     * @param isLiteralHTML Wheter this is literal HTML or not, defaults to false
      */
     void handleTextNewline(bool isPipeText = false, bool isLiteralHTML = false);
 
     /**
-     * @brief Parse a doctype token
+     * @brief Parse a Doctype Token
      *
-     * @param data
+     * @param data Pointer to the doctype data
      */
     void parseDoctype(DoctypeData *data);
 
     /**
-     * @brief Parse a tag token
+     * @brief Parse a Tag Token
      *
-     * @param data
+     * @param data Pointer to the tag data
      */
     void parseTag(TagData *data);
 
     /**
-     * @brief Parse a literal HTML token
+     * @brief Parse a Text Token
      *
-     * @param data
+     * @param data Pointer to the text data
      */
     void parseText(TextData *data);
 
     /**
-     * @brief Parse a comment token
+     * @brief Parse a Comment Token
      *
-     * @param data
+     * @param data Pointer to the comment data
      */
     void parseComment(CommentData *data);
 
     /**
-     * @brief Parse a include token
+     * @brief Parse a Include Token
      *
-     * @param data
+     * @param data Pointer to the include data
      */
     bool parseInclude(IncludeData *data);
 };

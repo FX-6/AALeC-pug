@@ -21,7 +21,7 @@ enum class TokenType {
 };
 
 /**
- * @brief Different types of doctypes
+ * @brief Different types of doctype shorthands
  */
 enum class DoctypeShorthand {
     Html,
@@ -47,7 +47,7 @@ class DoctypeData {
     String value;
 
     /**
-     * @brief The type of the doctype
+     * @brief What shortcut was used
      */
     DoctypeShorthand doctypeType;
 
@@ -59,8 +59,8 @@ class DoctypeData {
     /**
      * @brief Construct a new Doctype Data object
      *
-     * @param value
-     * @param doctypeType
+     * @param value The value of the doctype as found in the source code
+     * @param doctypeType What shortcut was used
      */
     DoctypeData(String value, DoctypeShorthand doctypeType);
 
@@ -101,7 +101,7 @@ class Attribute {
     bool checked;
 
     /**
-     * @brief If the attribute was generated from an empty commy
+     * @brief If the attribute was generated from an empty space between two commas
      */
     bool emptyAttribute;
 
@@ -113,16 +113,16 @@ class Attribute {
     /**
      * @brief Construct a new Attribute object, when its not a boolean attribute
      *
-     * @param key
-     * @param value
+     * @param key The key of the attribute
+     * @param value The value of the attribute
      */
     Attribute(String key, String value);
 
     /**
      * @brief Construct a new Attribute object, when its a boolean attribute
      *
-     * @param key
-     * @param checked
+     * @param key The key of the attribute
+     * @param checked Wheter the boolean attribute is checked or not
      */
     Attribute(String key, bool checked);
 };
@@ -160,10 +160,10 @@ class TagData {
     /**
      * @brief Construct a new Tag Data object
      *
-     * @param name
-     * @param attributes
-     * @param isVoidElement
-     * @param text
+     * @param name The tag
+     * @param attributes The attributes of the tag
+     * @param isVoidElement If the tag is forced to be a void element
+     * @param text The inner text of the tag
      */
     TagData(
         String name,
@@ -196,7 +196,8 @@ class TextData {
     /**
      * @brief Construct a new Text Data object
      *
-     * @param value
+     * @param value The value of the token
+     * @param pipeText If the text was after a pipe
      */
     TextData(String value, bool pipeText);
 };
@@ -219,7 +220,7 @@ class CommentData {
     /**
      * @brief Construct a new Comment Data object
      *
-     * @param value
+     * @param value The value of the comment
      */
     CommentData(String value);
 };
@@ -230,7 +231,7 @@ class CommentData {
 class IncludeData {
    public:
     /**
-     * @brief The path of the include
+     * @brief The path to the file to include
      */
     String path;
 
@@ -242,7 +243,7 @@ class IncludeData {
     /**
      * @brief Construct a new Include Data object
      *
-     * @param path
+     * @param path The path to the file to include
      */
     IncludeData(String path);
 };
@@ -259,53 +260,51 @@ class Token {
 
     /**
      * @brief Specific data for the token
+     * ToDo: Use a union?
      */
-    // ToDo: Use union for optimization?
-    // union {
     DoctypeData *doctype;
     TagData *tag;
     TextData *text;
     CommentData *comment;
     IncludeData *include;
-    // };
 
     /**
-     * @brief Construct a new Token object, with the given type, start and end.
+     * @brief Construct a new Generic Token object
      *
      * @param type Type of the Token
      */
     Token(TokenType type);
 
     /**
-     * @brief Construct a new Token object, with the given doctype data, start and end.
+     * @brief Construct a new Doctype Token object
      *
      * @param data Data about the Doctype Token
      */
     Token(DoctypeData *data);
 
     /**
-     * @brief Construct a new Token object, with the given tag data, start and end.
+     * @brief Construct a new Tag Token object
      *
      * @param data Data about the Tag Token
      */
     Token(TagData *data);
 
     /**
-     * @brief Construct a new Token object, with the given text data, start and end.
+     * @brief Construct a new Text Token object
      *
      * @param data Data about the Text Token
      */
     Token(TextData *data);
 
     /**
-     * @brief Construct a new Token object, with the given comment data, start and end.
+     * @brief Construct a new Comment Token object
      *
      * @param data Data about the Comment Token
      */
     Token(CommentData *data);
 
     /**
-     * @brief Construct a new Token object, with the given include data, start and end.
+     * @brief Construct a new Include Token object
      *
      * @param data Data about the Include Token
      */

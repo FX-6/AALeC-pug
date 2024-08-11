@@ -4,10 +4,13 @@
 #include <LittleFS.h>
 #include <token/token.h>
 
+/**
+ * @brief Scanner class that tokenizes a .pug file
+ */
 class Scanner {
    private:
     /**
-     * @brief The source that is being tokenized
+     * @brief The source file that is being tokenized
      */
     File inFile_;
 
@@ -38,9 +41,12 @@ class Scanner {
     /**
      * @brief Scan part of the source and return the tokens
      *
-     * @return std::vector<Token> Might start with Indent/Dedent Tokens,
-     *                            followed by another Token,
-     *                            ends with an EndOfPart or EndOfSource Token
+     * @param tokens Appends the scanned tokens to this vector.
+     *               Might start with Indent/Dedent Tokens,
+     *               followed by another Token,
+     *               ends with an EndOfPart or EndOfSource Token.
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
      */
     bool scanPart(std::vector<Token> *tokens);
 
@@ -48,76 +54,74 @@ class Scanner {
     // Helper functions
 
     /**
-     * @brief Checks if the source_ starts with a specific character
+     * @brief Compare the nexr char in the source to the given char
      *
-     * @param value The character that is being checked
-     * @return true source_ starts with the value
-     * @return false source_ does not start with the value
+     * @param value The character that is being compared
+     * @return true The chars match
+     * @return false The chars dont match
      */
     bool check(char value);
 
     /**
-     * @brief Checks if the source_ starts with a specific string
+     * @brief Compare the next part of the source to the given string
      *
-     * @param value The string that is being checked
-     * @return true source_ starts with the value
-     * @return false source_ does not start with the value
+     * @param value The string that is being compared
+     * @return true The string matches
+     * @return false The string does not match
      */
     bool check(String value);
 
     /**
-     * @brief Removes the specified amount of characters from the source_.
-     *        Also increments the line and column accordingly
+     * @brief Removes the specified amount of characters from the source and returns them
      *
-     * @param amount
+     * @param amount The amount of characters to remove, defaults to 1
      * @return String The removed characters
      */
     String consume(int amount = 1);
 
     /**
-     * @brief Removes the specified amount of characters from the source_.
-     *        Also increments the line and column accordingly
+     * @brief Removes the specified amount of characters from the source
      *
-     * @param amount
+     * @param amount The amount of characters to remove, defaults to 1
      */
     void ignore(int amount = 1);
 
     /**
-     * @brief Removes all whitespaces [" "\\t] from the source_
+     * @brief Removes all whitespaces (32: ' ', 9: '\t') from the source
      *
-     * @param includeNewlines If true: also removes newlines [\\n], defaults to false
+     * @param includeNewlines If true: also removes newlines (10: '\n'), defaults to false
      */
     void ignoreWhitespaces(bool includeNewlines = false);
 
     /**
-     * @brief Checks if the source starts with a whitespace [" "\\t]
+     * @brief Checks if the source starts with a whitespace (32: ' ', 9: '\t')
      *
-     * @return true
-     * @return false
+     * @return true The source starts with a whitespace (32: ' ', 9: '\t')
+     * @return false The source doesnt starts with a whitespace (32: ' ', 9: '\t')
      */
     bool isWhitespace();
 
     /**
-     * @brief Checks if the source starts with a valid identifier part [a-zA-Z0-9_]
+     * @brief Checks if the source starts with a alpha numeric char
      *
-     * @return true
-     * @return false
+     * @return true The source starts with a alpha numeric char
+     * @return false The source doesnt starts with a alpha numeric char
      */
     bool isIdentifierPart();
 
     /**
      * @brief Checks if the source is at the end
      *
-     * @return true
-     * @return false
+     * @return true The source is at the end
+     * @return false The source isnt at the end
      */
     bool isEndOfSource();
 
     /**
      * @brief Checks if the next line starts with more indentation than the current line
      *
-     * @return true
-     * @return false
+     * @return true The next line starts with more indentation than the current line
+     * @return false The next line does not start with more indentation than the current line
      */
     bool nextLineIndentationIsHigher();
 
@@ -127,7 +131,9 @@ class Scanner {
      * @brief Scans indentation.
      *        Expects a whitespace at the beginning
      *
-     * @return std::vector<Token>
+     * @param tokens Appends the Indent/Dedent Tokens to this vector
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
      */
     bool scanIndentation(std::vector<Token> *tokens);
 
@@ -135,7 +141,9 @@ class Scanner {
      * @brief Scans a doctype tag.
      *        Expects "doctype" at the beginning
      *
-     * @return DoctypeData
+     * @param data Writes the data to this pointer
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
      */
     bool scanDoctype(DoctypeData *&data);
 
@@ -143,15 +151,19 @@ class Scanner {
      * @brief Scans a generic tag.
      *        Expects a identifier part at the beginning
      *
-     * @return TagData
+     * @param data Writes the data to this pointer
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
      */
     bool scanTag(TagData *&data);
 
     /**
      * @brief Scans the attributes of a tag.
-     *        Expects a opening round bracket at the beginning
+     *        Expects a '(' at the beginning
      *
-     * @return std::vector<Attribute>
+     * @param attributes Appends the attributes to this vector
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
      */
     bool scanTagAttributes(std::vector<Attribute> *attributes);
 
@@ -165,15 +177,20 @@ class Scanner {
 
     /**
      * @brief Scans literal HTML.
-     *        Expects a less than sign at the beginning
+     *        Expects a '<' at the beginning
      *
-     * @return TextData
+     * @param data Writes the data to this pointer
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
      */
     bool scanText(TextData *&data);
 
     /**
      * @brief Ignores a comment.
      *        Expects a "//-" at the beginning
+     *
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
      */
     bool ignoreComment();
 
@@ -181,7 +198,9 @@ class Scanner {
      * @brief Scans a comment.
      *        Expects a "//" at the beginning
      *
-     * @return CommentData
+     * @param data Writes the data to this pointer
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
      */
     bool scanComment(CommentData *&data);
 
@@ -189,7 +208,9 @@ class Scanner {
      * @brief Scans a include.
      *        Expects a "include" at the beginning
      *
-     * @return IncludeData
+     * @param data Writes the data to this pointer
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
      */
     bool scanInclude(IncludeData *&data);
 };
