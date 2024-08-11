@@ -3,7 +3,39 @@
 #include <ESP8266WebServer.h>
 #include <LittleFS.h>
 
-#include "main.h"
+/**
+ * @brief Get the Mime Type of a file based on the file extension
+ *
+ * @param path Path to the file
+ * @return String Mime Type, defaults to "text/plain"
+ */
+String getMimeType(String path);
+
+/**
+ * @brief Handle an incoming request
+ */
+void handleRequest();
+
+/**
+ * @brief Check for index files in a directory
+ *
+ * @param path Path to the directory (with trailing slash)
+ */
+void sendIndex(String path);
+
+/**
+ * @brief Compile a pug file and send it to the client
+ *
+ * @param path Path to the pug file
+ */
+void sendPug(String path);
+
+/**
+ * @brief Try to send a file to the client
+ *
+ * @param path Path to the file that should be sends
+ */
+void sendFile(String path);
 
 // Your wifi ssid
 const String ssid = "your wifi ssid";
@@ -61,12 +93,6 @@ void loop() {
     server.handleClient();
 }
 
-/**
- * @brief Get the Mime Type of a file based on the file extension
- *
- * @param path Path to the file
- * @return String Mime Type, defaults to "text/plain"
- */
 String getMimeType(String path) {
     if (path.endsWith(".html")) {
         return "text/html";
@@ -81,9 +107,6 @@ String getMimeType(String path) {
     }
 }
 
-/**
- * @brief Handle an incoming request
- */
 void handleRequest() {
     // Get the requested URI
     String uri = ESP8266WebServer::urlDecode(server.uri());
@@ -98,11 +121,6 @@ void handleRequest() {
     }
 }
 
-/**
- * @brief Check for index files in a directory
- *
- * @param path Path to the directory (with trailing slash)
- */
 void sendIndex(String path) {
     // Check for index.pug and index.html files
     if (LittleFS.exists(path + "index.pug")) {
@@ -122,11 +140,6 @@ void sendIndex(String path) {
     }
 }
 
-/**
- * @brief Compile a pug file and send it to the client
- *
- * @param path Path to the pug file
- */
 void sendPug(String path) {
     // Open the pug file
     File pugFile = LittleFS.open(path, "r");
@@ -169,11 +182,6 @@ void sendPug(String path) {
     server.streamFile(outFile, "text/html");
 }
 
-/**
- * @brief Try to send a file to the client
- *
- * @param path Path to the file that should be sends
- */
 void sendFile(String path) {
     // Open the file
     File file = LittleFS.open(path, "r");
