@@ -65,10 +65,10 @@ Wont do: 🟥
 - 🟥 ~~Inheritance: Extends and Block~~
   - 🟥 ~~Basic~~
   - 🟥 ~~Block append / prepend~~
-- 🟨 Interpolation
+- 🟩 Interpolation
   - 🟥 ~~String Interpolation, Escaped~~
   - 🟥 ~~String Interpolation, Unescaped~~
-  - 🟨 Tag Interpolation
+  - 🟩 Tag Interpolation
 - 🟥 ~~Iteration~~
   - 🟥 ~~each~~
   - 🟥 ~~while~~

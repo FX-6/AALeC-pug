@@ -25,6 +25,17 @@ class Scanner {
      */
     std::vector<int> indentationLevel_;
 
+    /**
+     * @brief Wheter we are in a Block in a Tag Text
+     *        Used when scanning text after an Interpolation
+     */
+    bool inBlockInATag_;
+
+    /**
+     * @brief Wheter we are in an Interpolation
+     */
+    int interpolationLevel_;
+
    public:
     /**
      * @brief Construct a new Scanner object
@@ -169,21 +180,67 @@ class Scanner {
 
     /**
      * @brief Scans the inner text of a tag.
-     *        Expects a space at the beginning
+     *        Expects a space or a ".\n" at the beginning
      *
-     * @return String
+     * @return String The scanned text
      */
     String scanTagText();
 
     /**
-     * @brief Scans literal HTML.
-     *        Expects a '<' at the beginning
+     * @brief Scans the inline inner text of a tag.
+     *        Expects the space already removed
+     *
+     * @return String The scanned text
+     */
+    String scanTagTextInline();
+
+    /**
+     * @brief Scans the block in a tag inner text of a tag.
+     *        Expects the '.' already removed
+     *
+     * @return String The scanned text
+     */
+    String scanTagTextBlock();
+
+    /**
+     * @brief Scans Text.
+     *        Expects a '<', '|', or ']' at the beginning.
      *
      * @param data Writes the data to this pointer
      * @return true Scanning was successfull
      * @return false Scanning encountered an error, see the serial output for more information
      */
     bool scanText(TextData *&data);
+
+    /**
+     * @brief Scans Literal HTML Text.
+     *        Expects a '<' at the beginning.
+     *
+     * @param data Writes the data to this pointer
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
+     */
+    bool scanTextLiteralHTML(TextData *&data);
+
+    /**
+     * @brief Scans Piped Text.
+     *        Expects a '|' at the beginning.
+     *
+     * @param data Writes the data to this pointer
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
+     */
+    bool scanTextPipedText(TextData *&data);
+
+    /**
+     * @brief Scans Inner Text after an Interpolation.
+     *        Expects a ']' at the beginning.
+     *
+     * @param data Writes the data to this pointer
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
+     */
+    bool scanTextInterpolationEnd(TextData *&data);
 
     /**
      * @brief Ignores a comment.

@@ -7,7 +7,8 @@ Parser::Parser(String inPath, String outPath, DoctypeDialect doctype) :
     doctype_(doctype),
     scanner_(Scanner(inPath)),
     tags_(std::vector<String>()),
-    indentet_(false) {}
+    indentet_(false),
+    addNewlineFor_(TextType::InnerText) {}
 
 bool Parser::parse() {
     // Open the output file
@@ -125,24 +126,15 @@ void Parser::closeTagIfNecessary() {
     }
 }
 
-void Parser::handleTextNewline(bool isPipeText, bool isLiteralHTML) {
-    if (isPipeText) {
-        if (addPipeTextNewline_) {
+void Parser::handleTextNewline(TextType textType) {
+    if (textType != TextType::InnerText) {
+        if (addNewlineFor_ == textType) {
             outFile_.print('\n');
         } else {
-            addPipeTextNewline_ = true;
-            addLiteralHTMLNewline_ = false;
-        }
-    } else if (isLiteralHTML) {
-        if (addLiteralHTMLNewline_) {
-            outFile_.print('\n');
-        } else {
-            addLiteralHTMLNewline_ = true;
-            addPipeTextNewline_ = false;
+            addNewlineFor_ = textType;
         }
     } else {
-        addPipeTextNewline_ = false;
-        addLiteralHTMLNewline_ = false;
+        addNewlineFor_ = TextType::InnerText;
     }
 }
 
@@ -221,7 +213,7 @@ void Parser::parseText(TextData *data) {
     // Close previous tag if not indentet
     closeTagIfNecessary();
     // Handle the pipe newline
-    handleTextNewline(data->pipeText, !data->pipeText);
+    handleTextNewline(data->textType);
 
     // Add the text to the output
     outFile_.print(data->value.c_str());

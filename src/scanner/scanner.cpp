@@ -2,7 +2,9 @@
 
 Scanner::Scanner(String inPath) :
     indentationChar_('.'),
-    indentationLevel_(std::vector<int>()) {
+    indentationLevel_(std::vector<int>()),
+    inBlockInATag_(false),
+    interpolationLevel_(0) {
     inFile_ = LittleFS.open(inPath, "r");
 
     if (!inFile_) {
@@ -38,6 +40,17 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
         // Ignore the colon and following whitespace
         ignore();
         ignoreWhitespaces();
+    } else if (check("#[")) {
+        interpolationLevel_++;
+        indentationLevel_.push_back(0);
+        tokens->push_back(Token(TokenType::Indent));
+        ignore(2);
+    } else if (check(']')) {
+        interpolationLevel_--;
+        if (interpolationLevel_ > 0) {
+            indentationLevel_.pop_back();
+            tokens->push_back(Token(TokenType::Dedent));
+        }
     } else if (indentationLevel_.size() > 0) {
         // If there is an indentation level, but no indentation, its a dedent
         while (indentationLevel_.size() > 0) {
@@ -59,7 +72,7 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
             return false;
         }
         tokens->push_back(Token(data));
-    } else if (check("<") || check('|')) {
+    } else if (check("<") || check('|') || check(']')) {
         TextData *data = nullptr;
         if (!scanText(data)) {
             return false;
@@ -81,7 +94,8 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
             return false;
         }
         tokens->push_back(Token(data));
-    } else if (isIdentifierPart() || check('#') || check('.')) {
+    } else if (isIdentifierPart() || (check('#') && !check("#["))
+               || check('.')) {
         TagData *data = nullptr;
         if (!scanTag(data)) {
             return false;
@@ -95,7 +109,7 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
     } else if (check('\n')) {
         ignore();
         tokens->push_back(Token(TokenType::EndOfPart));
-    } else if (check(':')) {
+    } else if (check(':') || check("#[") || check(']')) {
         tokens->push_back(Token(TokenType::EndOfPart));
     } else {
         Serial.printf(
@@ -509,63 +523,127 @@ bool Scanner::scanTagAttributes(std::vector<Attribute> *attributes) {
 }
 
 String Scanner::scanTagText() {
-    String text = "";
-
     // Inline in a tag or block in a tag?
     if (check(' ')) {
-        // Inline in a tag
-
         // Ignore the leading space
         ignore();
 
-        // Consume until the '\n'
-        while (!check('\n')) {
-            text += consume();
-        }
+        return scanTagTextInline();
     } else if (check(".\n")) {
-        // Block in a tag
-
-        // Ignore the leading "."
+        // Ignore the leading '.'
         ignore();
 
-        // While indentation is higher, consume lines
-        while (nextLineIndentationIsHigher()) {
-            // Consume the '\n' of the current line, ignore the first
-            if (text != "") {
-                text += consume();
-            } else {
-                ignore();
-            }
+        return scanTagTextBlock();
+    }
 
-            // Ignore the whitespace between the '\n' and the next line
-            ignoreWhitespaces();
+    return "";
+}
 
-            // Consume the next line up until the '\n'
-            while (!check('\n')) {
-                text += consume();
-            }
+String Scanner::scanTagTextInline() {
+    String value = "";
+
+    // Depending on if we are in a interpolation
+    if (interpolationLevel_ > 0) {
+        // Consume until the end of the interpolation or the start of a new interpolation
+        while (!check(']') && !check("#[")) {
+            value += consume();
+        }
+    } else {
+        // Consume until the '\n' or a tag interpolation start
+        while (!check('\n') && !check("#[")) {
+            value += consume();
         }
     }
 
-    return text;
+    return value;
+}
+
+String Scanner::scanTagTextBlock() {
+    String value = "";
+
+    // Consume until the end of the first line
+    while (!check('\n') && !check("#[")) {
+        value += consume();
+    }
+
+    // While indentation is higher, consume lines
+    while (nextLineIndentationIsHigher()) {
+        // Consume the '\n' of the current line, ignore the first (except when we are already in a block in a tag)
+        if (value != "" || inBlockInATag_) {
+            value += consume();
+        } else {
+            ignore();
+        }
+
+        // Ignore the whitespace between the '\n' and the next line
+        ignoreWhitespaces();
+
+        // Consume the next line up until the '\n' or a tag interpolation start
+        while (!check('\n') && !check("#[")) {
+            value += consume();
+        }
+    }
+
+    // Text is done with no following interpolation
+    if (check('\n')) {
+        inBlockInATag_ = false;
+    } else {
+        inBlockInATag_ = true;
+    }
+
+    return value;
 }
 
 bool Scanner::scanText(TextData *&data) {
-    bool pipeText = false;
+    // Type of the text
+    if (check('<')) {
+        return scanTextLiteralHTML(data);
+    } else if (check('|')) {
+        return scanTextPipedText(data);
+    } else if (check(']')) {
+        return scanTextInterpolationEnd(data);
+    } else {
+        return false;
+    }
+}
+
+bool Scanner::scanTextLiteralHTML(TextData *&data) {
     String value = "";
 
-    // Ignore the pipe and following whitespaces
-    if (check('|')) {
-        ignore();
-        ignoreWhitespaces();
-        pipeText = true;
-    }
-
+    // Consume until the '\n'
     while (!check('\n')) {
         value += consume();
     }
 
-    data = new TextData(value, pipeText);
+    data = new TextData(value, TextType::LiteralHTML);
+    return true;
+}
+
+bool Scanner::scanTextPipedText(TextData *&data) {
+    // Ignore the leading '|' and following whitespaces
+    ignore();
+    ignoreWhitespaces();
+
+    String value = scanTagTextInline();
+
+    data = new TextData(value, TextType::PipedText);
+    return true;
+}
+
+bool Scanner::scanTextInterpolationEnd(TextData *&data) {
+    String value = "";
+
+    // Ignore the leading ']'
+    ignore();
+
+    // Cunsume debending on if we are in a block in a tag
+    if (inBlockInATag_ && interpolationLevel_ == 0) {
+        value = scanTagTextBlock();
+    } else {
+        value = scanTagTextInline();
+    }
+
+    data = new TextData(value, TextType::InnerText);
     return true;
 }
 

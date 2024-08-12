@@ -77,11 +77,11 @@ TagData::TagData(
     isVoidElement(isVoidElement),
     text(text) {}
 
-TextData::TextData() : value(""), pipeText(false) {}
+TextData::TextData() : value(""), textType(TextType::InnerText) {}
 
-TextData::TextData(String value, bool pipeText) :
+TextData::TextData(String value, TextType textType) :
     value(value),
-    pipeText(pipeText) {}
+    textType(textType) {}
 
 CommentData::CommentData() : value("") {}
 

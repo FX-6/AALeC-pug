@@ -53,14 +53,9 @@ class Parser {
     bool indentet_;
 
     /**
-     * @brief Wheter there should be a new line before the tag if it is pipe text
+     * @brief Wheter there should be a new line before the tag if it is this text type
      */
-    bool addPipeTextNewline_;
-
-    /**
-     * @brief Wheter there should be a new line before the tag if it is literal HTML
-     */
-    bool addLiteralHTMLNewline_;
+    TextType addNewlineFor_;
 
    public:
     /**
@@ -112,10 +107,9 @@ class Parser {
     /**
      * @brief Handle the text newline
      *
-     * @param isPipeText Wheter this is pipe text or not, defaults to false
-     * @param isLiteralHTML Wheter this is literal HTML or not, defaults to false
+     * @param isPipeText Type of the text, defaults to TextType::InnerText
      */
-    void handleTextNewline(bool isPipeText = false, bool isLiteralHTML = false);
+    void handleTextNewline(TextType textType = TextType::InnerText);
 
     /**
      * @brief Parse a Doctype Token

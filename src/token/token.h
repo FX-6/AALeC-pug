@@ -37,6 +37,15 @@ enum class DoctypeShorthand {
 };
 
 /**
+ * @brief Type of the Text Token
+ */
+enum class TextType {
+    LiteralHTML,
+    PipedText,
+    InnerText,
+};
+
+/**
  * @brief Data about a doctype token
  */
 class DoctypeData {
@@ -184,9 +193,9 @@ class TextData {
     String value;
 
     /**
-     * @brief If the text was after a pipe
+     * @brief Text type of this Text Token
      */
-    bool pipeText;
+    TextType textType;
 
     /**
      * @brief Construct a new empty Text Data object
@@ -197,9 +206,9 @@ class TextData {
      * @brief Construct a new Text Data object
      *
      * @param value The value of the token
-     * @param pipeText If the text was after a pipe
+     * @param textType Text type of this Text Token
      */
-    TextData(String value, bool pipeText);
+    TextData(String value, TextType textType);
 };
 
 /**
