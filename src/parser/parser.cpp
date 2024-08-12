@@ -1,27 +1,26 @@
 #include "parser.h"
 
 Parser::Parser(String inPath, String outPath, DoctypeDialect doctype) :
-    directory_(inPath.substring(0, inPath.lastIndexOf('/') + 1)),
+    inPath_(inPath),
+    outPath_(outPath),
+    outFile_(),
     doctype_(doctype),
     scanner_(Scanner(inPath)),
     tags_(std::vector<String>()),
-    indentet_(false) {
-    outFile_ = LittleFS.open(outPath, "w");
+    indentet_(false) {}
 
+bool Parser::parse() {
+    // Open the output file
+    outFile_ = LittleFS.open(outPath_, "w");
     if (!outFile_) {
         Serial.printf(
             "Error 2-1: Failed to open file for writing '%s'\n",
-            outPath.c_str()
+            outPath_.c_str()
         );
-        return;
+        return false;
     }
-}
 
-Parser::~Parser() {
-    outFile_.close();
-}
-
-bool Parser::parse() {
+    // Parse it
     while (true) {
         std::vector<Token> *tokens = new std::vector<Token>();
         if (!scanner_.scanPart(tokens)) {
@@ -75,14 +74,18 @@ bool Parser::parse() {
                 closeTag();
             }
 
-            return true;
+            // End the loop
+            break;
         } else if (token.type != TokenType::EndOfPart || tokens->size() > 0) {
             Serial.printf("Error 2-2: unexpected token\n");
             return false;
         }
     }
 
-    return false;
+    // Close the output file
+    outFile_.close();
+
+    return true;
 }
 
 Token Parser::nextToken(std::vector<Token> *tokens) {
@@ -244,39 +247,67 @@ bool Parser::parseInclude(IncludeData *data) {
     // Handle the pipe newline
     handleTextNewline();
 
+    // Get the directory path
+    String direcotryPath = data->path[0] != '/'
+        ? inPath_.substring(0, inPath_.lastIndexOf("/") + 1)
+        : "";
+
     // Get the includeFilePath
-    String includeFilePath =
-        data->path[0] == '/' ? data->path : directory_ + data->path;
+    String includeFilePath = direcotryPath + data->path;
 
-    // Open the file (relative or absolute)
-    File includeFile = LittleFS.open(includeFilePath, "r");
-
-    // Check that it worked
-    if (!includeFile) {
+    // Check for recursion
+    if (includeFilePath == inPath_) {
         Serial.printf(
-            "Error 2-4: Failed to open include file '%s'\n",
+            "Error 2-4: Recursive include of '%s'\n",
             includeFilePath.c_str()
         );
         return false;
     }
 
-    // Close the included file
-    includeFile.close();
-
-    // Parse the file if it is a pug file
-    String outPath = includeFilePath + ".html";
-    if (includeFilePath.length() > 5 && data->path.endsWith(".pug")) {
-        Parser parser(includeFilePath, outPath, doctype_);
-        if (!parser.parse()) {
-            return false;
-        }
+    // Open the file
+    File includeFile = LittleFS.open(includeFilePath, "r");
+    if (!includeFile) {
+        Serial.printf(
+            "Error 2-5: Failed to open include file '%s'\n",
+            includeFilePath.c_str()
+        );
+        return false;
     }
 
-    // Open the compiled file
-    File outFile = LittleFS.open(outPath, "r");
+    // Parse the file if it is a pug file
+    if (includeFilePath.length() > 5 && data->path.endsWith(".pug")) {
+        // Close the source file
+        includeFile.close();
 
-    // Append the file
-    outFile_.print(outFile.readString().c_str());
+        // Generate a path for the compiled file
+        String outFilePath = includeFilePath + ".html";
+
+        // Parse the file
+        Parser parser(includeFilePath, outFilePath, doctype_);
+        if (!parser.parse()) {
+            Serial.printf(
+                "Error 2-6: Failed to parse included file '%s'\n",
+                includeFilePath.c_str()
+            );
+            return false;
+        }
+
+        // Open, append, and close the compiled file
+        File outFile = LittleFS.open(outFilePath, "r");
+        if (!outFile.isFile()) {
+            Serial.printf(
+                "Error 2-7: Failed to open compiled file '%s'\n",
+                outFilePath.c_str()
+            );
+            return false;
+        }
+        outFile_.print(outFile.readString().c_str());
+        outFile.close();
+    } else {
+        // Append and close the file
+        outFile_.print(includeFile.readString().c_str());
+        includeFile.close();
+    }
 
     tags_.push_back("");
 

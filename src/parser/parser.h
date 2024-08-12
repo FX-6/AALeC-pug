@@ -18,14 +18,19 @@ enum class DoctypeDialect {
 class Parser {
    private:
     /**
+     * @brief The path to the file that should be compiled
+     */
+    String inPath_;
+
+    /**
+     * @brief The path to the output file
+     */
+    String outPath_;
+
+    /**
      * @brief The file to write the HTML to
      */
     File outFile_;
-
-    /**
-     * @brief The directory of the currently compiled file, with a trailing slash
-     */
-    String directory_;
 
     /**
      * @brief The HTML dialect
@@ -70,11 +75,6 @@ class Parser {
         String outPath,
         DoctypeDialect doctype = DoctypeDialect::None
     );
-
-    /**
-     * @brief Destroy the Parser object
-     */
-    ~Parser();
 
     /**
      * @brief Parse the source
