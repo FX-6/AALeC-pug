@@ -326,7 +326,7 @@ bool Scanner::scanTag(TagData *&data) {
     String classLiteral = "";
     std::vector<Attribute> attributes = std::vector<Attribute>();
     bool forcedVoidElement = false;
-    String text = "";
+    String *text = new String("");
 
     // Get the tag name
     if (isIdentifierPart()) {
@@ -369,6 +369,7 @@ bool Scanner::scanTag(TagData *&data) {
     if (check('(')) {
         // Get the additional attributes
         if (!scanTagAttributes(&attributes)) {
+            delete text;
             return false;
         }
     }
@@ -378,16 +379,21 @@ bool Scanner::scanTag(TagData *&data) {
         ignore();
         forcedVoidElement = true;
     } else if (check(' ') || check(".\n")) {
-        text = scanTagText();
+        if (!scanTagText(text)) {
+            delete text;
+            return false;
+        }
     } else if (!check(':') && !check('\n')) {
         Serial.printf(
             "Error 1-5: Unexpected character (ASCII code: '%d')\n",
             inFile_.peek()
         );
+        delete text;
         return false;
     }
 
-    data = new TagData(name, attributes, forcedVoidElement, text);
+    data = new TagData(name, attributes, forcedVoidElement, *text);
+    delete text;
     return true;
 }
 
@@ -532,55 +538,63 @@ bool Scanner::scanTagAttributes(std::vector<Attribute> *attributes) {
     return true;
 }
 
-String Scanner::scanTagText() {
+bool Scanner::scanTagText(String *value) {
     // Inline in a tag or block in a tag?
     if (check(' ')) {
         // Ignore the leading space
         ignore();
 
-        return scanTagTextInline();
+        if (!scanTagTextInline(value)) {
+            return false;
+        }
     } else if (check(".\n")) {
         // Ignore the leading '.'
         ignore();
 
-        return scanTagTextBlock();
+        if (!scanTagTextBlock(value)) {
+            return false;
+        }
     }
 
-    return "";
+    return true;
 }
 
-String Scanner::scanTagTextInline() {
-    String value = "";
-
+bool Scanner::scanTagTextInline(String *value) {
     // Depending on if we are in a interpolation
     if (interpolationLevel_ > 0) {
         // Consume until the end of the interpolation or the start of a new interpolation
         while (!check(']') && !check("#[")) {
-            value += consume();
+            if (!scanTagTextPart(value)) {
+                return false;
+            }
         }
     } else {
         // Consume until the '\n' or a tag interpolation start
         while (!check('\n') && !check("#[")) {
-            value += consume();
+            if (!scanTagTextPart(value)) {
+                return false;
+            }
         }
     }
 
-    return value;
+    return true;
 }
 
-String Scanner::scanTagTextBlock() {
-    String value = "";
-
+bool Scanner::scanTagTextBlock(String *value) {
     // Consume until the end of the first line
     while (!check('\n') && !check("#[")) {
-        value += consume();
+        if (!scanTagTextPart(value)) {
+            return false;
+        }
     }
 
     // While indentation is higher, consume lines
     while (nextLineIndentationIsHigher()) {
         // Consume the '\n' of the current line, ignore the first (except when we are already in a block in a tag)
-        if (value != "" || inBlockInATag_) {
-            value += consume();
+        if (*value != "" || inBlockInATag_) {
+            if (!scanTagTextPart(value)) {
+                return false;
+            }
         } else {
             ignore();
         }
@@ -590,7 +604,9 @@ String Scanner::scanTagTextBlock() {
 
         // Consume the next line up until the '\n' or a tag interpolation start
         while (!check('\n') && !check("#[")) {
-            value += consume();
+            if (!scanTagTextPart(value)) {
+                return false;
+            }
         }
     }
 
@@ -601,7 +617,39 @@ String Scanner::scanTagTextBlock() {
         inBlockInATag_ = true;
     }
 
-    return value;
+    return true;
+}
+
+bool Scanner::scanTagTextPart(String *value) {
+    if (check("#{IO_")) {
+        // Ignore the "#{"
+        ignore(2);
+
+        // Get the GPIO value
+        uint *gpio = new uint(0);
+
+        if (!getGPIOValue(gpio)) {
+            delete gpio;
+            return false;
+        }
+
+        *value += String(*gpio);
+        delete gpio;
+
+        if (!check("}")) {
+            Serial.printf(
+                "Error 1-8: Unexpected character (ASCII code: '%d')\n",
+                inFile_.peek()
+            );
+            return false;
+        } else {
+            ignore();
+        }
+    } else {
+        *value += consume();
+    }
+
+    return true;
 }
 
 bool Scanner::scanText(TextData *&data) {
@@ -634,26 +682,39 @@ bool Scanner::scanTextPipedText(TextData *&data) {
     ignore();
     ignoreWhitespaces();
 
-    String value = scanTagTextInline();
+    String *value = new String("");
 
-    data = new TextData(value, TextType::PipedText);
+    if (!scanTagTextInline(value)) {
+        delete value;
+        return false;
+    }
+
+    data = new TextData(*value, TextType::PipedText);
+    delete value;
     return true;
 }
 
 bool Scanner::scanTextInterpolationEnd(TextData *&data) {
-    String value = "";
+    String *value = new String("");
 
     // Ignore the leading ']'
     ignore();
 
     // Cunsume debending on if we are in a block in a tag
     if (inBlockInATag_ && interpolationLevel_ == 0) {
-        value = scanTagTextBlock();
+        if (!scanTagTextBlock(value)) {
+            delete value;
+            return false;
+        }
     } else {
-        value = scanTagTextInline();
+        if (!scanTagTextInline(value)) {
+            delete value;
+            return false;
+        }
     }
 
-    data = new TextData(value, TextType::InnerText);
+    data = new TextData(*value, TextType::InnerText);
+    delete value;
     return true;
 }
 
@@ -735,27 +796,27 @@ bool Scanner::scanInclude(IncludeData *&data) {
 
 bool Scanner::getGPIOValue(uint *&result) {
     if (check("IO_LED")) {
-        ignore(5);
+        ignore(6);
         *result = aalec.get_led();
         return true;
     } else if (check("IO_BUTTON")) {
-        ignore(8);
+        ignore(9);
         *result = aalec.get_button();
         return true;
     } else if (check("IO_ROTATE")) {
-        ignore(8);
+        ignore(9);
         *result = aalec.get_rotate();
         return true;
     } else if (check("IO_TEMP")) {
-        ignore(8);
+        ignore(7);
         *result = aalec.get_temp();
         return true;
     } else if (check("IO_HUMIDITY")) {
-        ignore(8);
+        ignore(11);
         *result = aalec.get_humidity();
         return true;
     } else if (check("IO_ANALOG")) {
-        ignore(8);
+        ignore(9);
         *result = aalec.get_analog();
         return true;
     } else {

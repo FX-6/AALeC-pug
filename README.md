@@ -21,13 +21,13 @@ Done: 🟩 \
 ToDo: 🟨 \
 Wont do: 🟥
 
-- 🟨 Attributes
+- 🟩 Attributes
   - 🟩 Basic
   - 🟩 Multiline Attributes
   - 🟩 Quoted Attributes
   - 🟥 ~~Attribute Interpolation~~
   - 🟩 Unescaped Attributes
-  - 🟨 Boolean Attributes (see below for Conditional Expressions)
+  - 🟩 Boolean Attributes (see below for Conditional Expressions)
   - 🟥 ~~Style Attributes~~
   - 🟥 ~~Class Attributes~~
   - 🟩 Class Literal
@@ -65,11 +65,11 @@ Wont do: 🟥
 - 🟥 ~~Inheritance: Extends and Block~~
   - 🟥 ~~Basic~~
   - 🟥 ~~Block append / prepend~~
-- 🟨 Interpolation
+- 🟩 Interpolation
   - 🟥 ~~String Interpolation, Escaped~~
   - 🟥 ~~String Interpolation, Unescaped~~
   - 🟩 Tag Interpolation
-  - 🟨 GPIO Interpolation (with `#{GPIO ID}`)
+  - 🟩 GPIO Interpolation (with `#{GPIO ID}`)
 - 🟥 ~~Iteration~~
   - 🟥 ~~each~~
   - 🟥 ~~while~~

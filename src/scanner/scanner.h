@@ -190,25 +190,40 @@ class Scanner {
      * @brief Scans the inner text of a tag.
      *        Expects a space or a ".\n" at the beginning
      *
-     * @return String The scanned text
+     * @param value The scanned text
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
      */
-    String scanTagText();
+    bool scanTagText(String *value);
 
     /**
      * @brief Scans the inline inner text of a tag.
      *        Expects the space already removed
      *
-     * @return String The scanned text
+     * @param value The scanned text
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
      */
-    String scanTagTextInline();
+    bool scanTagTextInline(String *value);
 
     /**
      * @brief Scans the block in a tag inner text of a tag.
      *        Expects the '.' already removed
      *
-     * @return String The scanned text
+     * @param value The scanned text
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
      */
-    String scanTagTextBlock();
+    bool scanTagTextBlock(String *value);
+
+    /**
+     * @brief Scans the next part of the tag text and appends it to the value.
+     *
+     * @param value The scanned text is appended to this string
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
+     */
+    bool scanTagTextPart(String *value);
 
     /**
      * @brief Scans Text.
