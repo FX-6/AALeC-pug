@@ -260,21 +260,23 @@ bool Parser::parseInclude(IncludeData *data) {
         return false;
     }
 
-    // Parse the file if it is a pug file
-    if (includeFilePath.length() > 5 && data->path.endsWith(".pug")) {
-        String outPath = includeFilePath + ".html";
+    // Close the included file
+    includeFile.close();
 
+    // Parse the file if it is a pug file
+    String outPath = includeFilePath + ".html";
+    if (includeFilePath.length() > 5 && data->path.endsWith(".pug")) {
         Parser parser(includeFilePath, outPath, doctype_);
         if (!parser.parse()) {
             return false;
         }
     }
 
-    // Append the file
-    outFile_.print(includeFile.readString().c_str());
+    // Open the compiled file
+    File outFile = LittleFS.open(outPath, "r");
 
-    // Close the file
-    includeFile.close();
+    // Append the file
+    outFile_.print(outFile.readString().c_str());
 
     tags_.push_back("");
 
