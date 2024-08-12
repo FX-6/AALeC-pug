@@ -1,5 +1,7 @@
 #include "scanner.h"
 
+#include <AALec-V2.h>
+
 Scanner::Scanner(String inPath) :
     indentationChar_('.'),
     indentationLevel_(std::vector<int>()),
@@ -167,6 +169,10 @@ void Scanner::ignoreWhitespaces(bool includeNewlines) {
 
 bool Scanner::isWhitespace() {
     return check(' ') || check('\t');
+}
+
+bool Scanner::isDigit() {
+    return isdigit(inFile_.peek());
 }
 
 bool Scanner::isIdentifierPart() {
@@ -474,14 +480,18 @@ bool Scanner::scanTagAttributes(std::vector<Attribute> *attributes) {
 
                 // Ignore the closing quote
                 ignore();
-            } else if (check("true")) {
-                ignore(4);
+            } else if (check('(') || check("True") || check("False")
+                       || check("IO_") || isDigit()) {
+                bool *exprResult = new bool(false);
+
+                if (!scanExpression(exprResult)) {
+                    delete exprResult;
+                    return false;
+                }
+
                 booleanAttribute = true;
-                checked = true;
-            } else if (check("false")) {
-                ignore(5);
-                booleanAttribute = true;
-                checked = false;
+                checked = *exprResult;
+                delete exprResult;
             } else {
                 Serial.printf(
                     "Error 1-7: Unexpected character (ASCII code: '%d')\n",
@@ -721,4 +731,153 @@ bool Scanner::scanInclude(IncludeData *&data) {
 
     data = new IncludeData(path);
     return true;
+}
+
+bool Scanner::getGPIOValue(uint *&result) {
+    if (check("IO_LED")) {
+        ignore(5);
+        *result = aalec.get_led();
+        return true;
+    } else if (check("IO_BUTTON")) {
+        ignore(8);
+        *result = aalec.get_button();
+        return true;
+    } else if (check("IO_ROTATE")) {
+        ignore(8);
+        *result = aalec.get_rotate();
+        return true;
+    } else if (check("IO_TEMP")) {
+        ignore(8);
+        *result = aalec.get_temp();
+        return true;
+    } else if (check("IO_HUMIDITY")) {
+        ignore(8);
+        *result = aalec.get_humidity();
+        return true;
+    } else if (check("IO_ANALOG")) {
+        ignore(8);
+        *result = aalec.get_analog();
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool Scanner::scanExpression(bool *&result) {
+    if (check('(')) {
+        // Ignore the '(' and following whitespace
+        ignore();
+        ignoreWhitespaces();
+
+        u32 *firstExprResult = new u32(0);
+        bool *firstIsTrue = new bool(false);
+        u32 *secondExprResult = new u32(0);
+        bool *secondIsTrue = new bool(false);
+
+        if (!evaluateExpression(firstExprResult, firstIsTrue)) {
+            delete firstExprResult;
+            delete firstIsTrue;
+            delete secondExprResult;
+            delete secondIsTrue;
+            return false;
+        }
+
+        // Ignore the '=' and surounding whitespace
+        ignoreWhitespaces();
+        if (!check('=')) {
+            delete firstExprResult;
+            delete firstIsTrue;
+            delete secondExprResult;
+            delete secondIsTrue;
+            return false;
+        } else {
+            ignore();
+        }
+        ignoreWhitespaces();
+
+        if (!evaluateExpression(secondExprResult, secondIsTrue)) {
+            delete firstExprResult;
+            delete firstIsTrue;
+            delete secondExprResult;
+            delete secondIsTrue;
+            return false;
+        }
+
+        if (*firstIsTrue && *secondIsTrue) {
+            *result = true;
+        } else if (*firstIsTrue) {
+            *result = *secondExprResult != 0;
+        } else if (*secondIsTrue) {
+            *result = *firstExprResult != 0;
+        } else {
+            *result = *firstExprResult == *secondExprResult;
+        }
+
+        // Ignore the closing ')', and whitespace before it
+        ignoreWhitespaces();
+        if (!check(')')) {
+            delete firstExprResult;
+            delete firstIsTrue;
+            delete secondExprResult;
+            delete secondIsTrue;
+            return false;
+        } else {
+            ignore();
+        }
+
+        delete firstExprResult;
+        delete firstIsTrue;
+        delete secondExprResult;
+        delete secondIsTrue;
+        return true;
+    } else {
+        u32 *exprResult = new u32(0);
+        bool *isTrue = new bool(false);
+
+        if (!evaluateExpression(exprResult, isTrue)) {
+            delete exprResult;
+            delete isTrue;
+            return false;
+        }
+
+        *result = *isTrue || *exprResult != 0;
+
+        delete exprResult;
+        delete isTrue;
+        return true;
+    }
+}
+
+bool Scanner::evaluateExpression(u32 *&result, bool *&isTrue) {
+    if (check("True")) {
+        ignore(4);
+        *result = 1;
+        *isTrue = true;
+        return true;
+    } else if (check("False")) {
+        ignore(5);
+        *result = 0;
+        *isTrue = false;
+        return true;
+    } else if (isDigit()) {
+        String value = "";
+        while (isDigit()) {
+            value += consume();
+        }
+        *result = value.toInt();
+        *isTrue = false;
+        return true;
+    } else if (check("IO_")) {
+        if (!getGPIOValue(result)) {
+            return false;
+        }
+        *isTrue = false;
+        return true;
+    } else {
+        Serial.printf(
+            "Error 1-8: Unexpected character (ASCII code: '%d')\n",
+            inFile_.peek()
+        );
+        return false;
+    }
 }

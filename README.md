@@ -21,13 +21,13 @@ Done: 🟩 \
 ToDo: 🟨 \
 Wont do: 🟥
 
-- 🟩 Attributes
+- 🟨 Attributes
   - 🟩 Basic
   - 🟩 Multiline Attributes
   - 🟩 Quoted Attributes
   - 🟥 ~~Attribute Interpolation~~
   - 🟩 Unescaped Attributes
-  - 🟩 Boolean Attributes
+  - 🟨 Boolean Attributes (see below for Conditional Expressions)
   - 🟥 ~~Style Attributes~~
   - 🟥 ~~Class Attributes~~
   - 🟩 Class Literal
@@ -47,7 +47,7 @@ Wont do: 🟥
   - 🟩 Conditional Comments
 - 🟨 Conditionals
   - 🟥 ~~Basic~~
-  - 🟨 GPIO Pin Conditionals
+  - 🟨 GPIO Pin Conditionals (see below for Conditional Expressions)
 - 🟩 Doctype
   - 🟩 Doctype Shortcuts
   - 🟩 Custom Doctypes
@@ -65,10 +65,11 @@ Wont do: 🟥
 - 🟥 ~~Inheritance: Extends and Block~~
   - 🟥 ~~Basic~~
   - 🟥 ~~Block append / prepend~~
-- 🟩 Interpolation
+- 🟨 Interpolation
   - 🟥 ~~String Interpolation, Escaped~~
   - 🟥 ~~String Interpolation, Unescaped~~
   - 🟩 Tag Interpolation
+  - 🟨 GPIO Interpolation (with `#{GPIO ID}`)
 - 🟥 ~~Iteration~~
   - 🟥 ~~each~~
   - 🟥 ~~while~~
@@ -87,3 +88,24 @@ Wont do: 🟥
   - 🟩 Basic
   - 🟩 Block Expansion
   - 🟩 Self-Closing Tags
+
+### Conditional Expressions
+
+Conditional Expressions can have one of the following formats:
+- `<key>`, evaluates to `true` if the key is any number not 0
+- `(<key> = <key>)`, ecalutes to `true` if the keys match
+
+Where `<key>` is one of the following:
+- `True` (any number not `0`)
+- `False` (the number `0`)
+- An unsigned 32 bit integer
+- A GPIO ID, see below for more info
+
+### GPIO IDs
+
+- `IO_LED` to see if the LED is turned on
+- `IO_BUTTON` to see if the button is pressed
+- `IO_ROTATE` to get the rotation
+- `IO_TEMP` to get the measured temperature
+- `IO_HUMIDITY` to get the measured humidity
+- `IO_ANALOG` to get the analog rotation

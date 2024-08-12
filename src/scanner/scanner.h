@@ -113,6 +113,14 @@ class Scanner {
     bool isWhitespace();
 
     /**
+     * @brief Checks if the source starts with a digit
+     *
+     * @return true The source starts with a digit
+     * @return false The source doesnt start with a digit
+     */
+    bool isDigit();
+
+    /**
      * @brief Checks if the source starts with a alpha numeric char
      *
      * @return true The source starts with a alpha numeric char
@@ -270,6 +278,37 @@ class Scanner {
      * @return false Scanning encountered an error, see the serial output for more information
      */
     bool scanInclude(IncludeData *&data);
+
+    /**
+     * @brief Gets the value of a GPIO Pin.
+     *        Expects "IO_" at the beginning
+     *
+     * @param result The value of the GPIO Pin is written to this pointer
+     * @return true Operation was successfull
+     * @return false Operation encountered an error, see the serial output for more information
+     */
+    bool getGPIOValue(uint *&result);
+
+    /**
+     * @brief Evaluates an expression.
+     *        Expects a '(', "True", "False", "IO_", or digit at the beginning
+     *
+     * @param result Result of the expression evaluation
+     * @return true Scanning was successfull
+     * @return false Scanning encountered an error, see the serial output for more information
+     */
+    bool scanExpression(bool *&result);
+
+    /**
+     * @brief Evaluates an expression.
+     *        Expects a "True", "False", "IO_", or digit at the beginning
+     *
+     * @param result Result of the expression evaluation
+     * @param isTrue Wheter the expression was `True`
+     * @return true Evaluation was successfull
+     * @return false Evaluation encountered an error, see the serial output for more information
+     */
+    bool evaluateExpression(u32 *&result, bool *&isTrue);
 };
 
 #endif  // SCANNER_H
