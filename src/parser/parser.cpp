@@ -1,7 +1,7 @@
 #include "parser.h"
 
 Parser::Parser(String inPath, String outPath, DoctypeDialect doctype) :
-    directory_(inPath.substring(0, inPath.lastIndexOf('/'))),
+    directory_(inPath.substring(0, inPath.lastIndexOf('/') + 1)),
     doctype_(doctype),
     scanner_(Scanner(inPath)),
     tags_(std::vector<String>()),
