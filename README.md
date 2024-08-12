@@ -13,7 +13,7 @@ This project is build for the [AALeC](https://github.com/informatik-aalen/AALeC-
 
 ### PlatformIO
 
-1. Add `lib_deps = https://github.com/FX-6/AALeC-pug.git` to your `platformio.ini` file.
+1. Add `lib_deps = https://github.com/FX-6/AALeC-pug` to your `platformio.ini` file.
 
 ## Features
 
