@@ -14,7 +14,7 @@ Scanner::Scanner(String inPath) :
     inBlockInATag_(false),
     interpolationLevel_(0) {}
 
-bool Scanner::scanPart(std::vector<Token> *tokens) {
+bool Scanner::scanPart(std::vector<Token> &tokens) {
     inFile_ = LittleFS.open(inPath_, "r");
     if (!inFile_ || !inFile_.isFile()) {
         Serial.printf(
@@ -45,14 +45,14 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
         while (indentations_.size() > 0) {
             if (indentations_.back().type == IndentationType::BlockExpansion) {
                 indentations_.pop_back();
-                tokens->push_back(Token(TokenType::Dedent));
+                tokens.push_back(Token(TokenType::Dedent));
             } else {
                 break;
             }
         }
     } else if (check(':')) {
         // Block expansion, add a Indent Token and a 0 size indent level
-        tokens->push_back(Token(TokenType::Indent));
+        tokens.push_back(Token(TokenType::Indent));
         indentations_.push_back(Indentation(IndentationType::BlockExpansion));
 
         // Ignore the colon and following whitespace
@@ -61,19 +61,19 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
     } else if (check("#[")) {
         interpolationLevel_++;
         indentations_.push_back(Indentation(IndentationType::TagInterpolation));
-        tokens->push_back(Token(TokenType::Indent));
+        tokens.push_back(Token(TokenType::Indent));
         ignore(2);
     } else if (check(']')) {
         interpolationLevel_--;
         if (interpolationLevel_ > 0) {
             indentations_.pop_back();
-            tokens->push_back(Token(TokenType::Dedent));
+            tokens.push_back(Token(TokenType::Dedent));
         }
     } else if (indentations_.size() > 0) {
         // If there is an indentation level, but no indentation, its a dedent
         while (indentations_.size() > 0) {
             if (indentations_.back().type != IndentationType::Conditional) {
-                tokens->push_back(Token(TokenType::Dedent));
+                tokens.push_back(Token(TokenType::Dedent));
             }
             indentations_.pop_back();
         }
@@ -84,7 +84,7 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
 
             if (back.type == IndentationType::BlockExpansion) {
                 indentations_.pop_back();
-                tokens->push_back(Token(TokenType::Dedent));
+                tokens.push_back(Token(TokenType::Dedent));
             } else if (back.type == IndentationType::Conditional) {
                 indentations_.pop_back();
             } else {
@@ -95,23 +95,21 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
 
     // Scan a token if there is a token
     if (check("doctype")) {
-        DoctypeData *data = nullptr;
+        DoctypeData data = DoctypeData();
         if (!scanDoctype(data)) {
-            delete data;
             inFile_.close();
             // Error output from `scanDoctype()`
             return false;
         }
-        tokens->push_back(Token(data));
+        tokens.push_back(Token(data));
     } else if (check("<") || check('|') || check(']')) {
-        TextData *data = nullptr;
+        TextData data = TextData();
         if (!scanText(data)) {
-            delete data;
             inFile_.close();
             // Error output from `scanText()`
             return false;
         }
-        tokens->push_back(Token(data));
+        tokens.push_back(Token(data));
     } else if (check("//-")) {
         if (!ignoreComment()) {
             inFile_.close();
@@ -119,23 +117,21 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
             return false;
         }
     } else if (check("//")) {
-        CommentData *data = nullptr;
+        CommentData data = CommentData();
         if (!scanComment(data)) {
-            delete data;
             inFile_.close();
             // Error output from `scanComment()`
             return false;
         }
-        tokens->push_back(Token(data));
+        tokens.push_back(Token(data));
     } else if (check("include")) {
-        IncludeData *data = nullptr;
+        IncludeData data = IncludeData();
         if (!scanInclude(data)) {
-            delete data;
             inFile_.close();
             // Error output from `scanInclude()`
             return false;
         }
-        tokens->push_back(Token(data));
+        tokens.push_back(Token(data));
     } else if (check("if") || check("unless") || check("else")) {
         if (!scanConditional()) {
             inFile_.close();
@@ -144,24 +140,23 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
         }
     } else if (isIdentifierPart() || (check('#') && !check("#["))
                || check('.')) {
-        TagData *data = nullptr;
+        TagData data = TagData();
         if (!scanTag(data)) {
-            delete data;
             inFile_.close();
             // Error output from `scanTag()`
             return false;
         }
-        tokens->push_back(Token(data));
+        tokens.push_back(Token(data));
     }
 
     // Handle the part after the token
     if (isEndOfSource()) {
-        tokens->push_back(Token(TokenType::EndOfSource));
+        tokens.push_back(Token(TokenType::EndOfSource));
     } else if (check('\n')) {
         ignore();
-        tokens->push_back(Token(TokenType::EndOfPart));
+        tokens.push_back(Token(TokenType::EndOfPart));
     } else if (check(':') || check("#[") || check(']')) {
-        tokens->push_back(Token(TokenType::EndOfPart));
+        tokens.push_back(Token(TokenType::EndOfPart));
     } else {
         inFile_.close();
         printErrorUnexpectedChar("Error 1-2");
@@ -311,7 +306,7 @@ bool Scanner::nextLineIsPartOfSameConditional() {
     return check(comparisonString);
 }
 
-bool Scanner::scanIndentation(std::vector<Token> *tokens) {
+bool Scanner::scanIndentation(std::vector<Token> &tokens) {
     // Set the used indentation char if not already set
     if (indentationChar_ == '.') {
         indentationChar_ = inFile_.peek();
@@ -341,7 +336,7 @@ bool Scanner::scanIndentation(std::vector<Token> *tokens) {
         // or a smaller level -> generate dedents and remove the levels
         while (level < indentations_.size()) {
             if (indentations_.back().type != IndentationType::Conditional) {
-                tokens->push_back(Token(TokenType::Dedent));
+                tokens.push_back(Token(TokenType::Dedent));
             }
             indentations_.pop_back();
         }
@@ -365,7 +360,7 @@ bool Scanner::scanIndentation(std::vector<Token> *tokens) {
                 indentations_.push_back(
                     Indentation(IndentationType::Default, newLevelSize)
                 );
-                tokens->push_back(Token(TokenType::Indent));
+                tokens.push_back(Token(TokenType::Indent));
             }
         } else {
             Serial.printf(
@@ -392,7 +387,7 @@ bool Scanner::scanIndentation(std::vector<Token> *tokens) {
     return true;
 }
 
-bool Scanner::scanDoctype(DoctypeData *&data) {
+bool Scanner::scanDoctype(DoctypeData &data) {
     // Ignore the "doctype" keyword and following spaces/tabs
     ignore(7);
     ignoreWhitespaces();
@@ -405,38 +400,38 @@ bool Scanner::scanDoctype(DoctypeData *&data) {
 
     // Create the data
     if (value == "html" || value == "") {
-        data = new DoctypeData(value, DoctypeShorthand::Html);
+        data = DoctypeData(value, DoctypeShorthand::Html);
     } else if (value == "xml") {
-        data = new DoctypeData(value, DoctypeShorthand::Xml);
+        data = DoctypeData(value, DoctypeShorthand::Xml);
     } else if (value == "transitional") {
-        data = new DoctypeData(value, DoctypeShorthand::Transitional);
+        data = DoctypeData(value, DoctypeShorthand::Transitional);
     } else if (value == "strict") {
-        data = new DoctypeData(value, DoctypeShorthand::Strict);
+        data = DoctypeData(value, DoctypeShorthand::Strict);
     } else if (value == "frameset") {
-        data = new DoctypeData(value, DoctypeShorthand::Frameset);
+        data = DoctypeData(value, DoctypeShorthand::Frameset);
     } else if (value == "1.1") {
-        data = new DoctypeData(value, DoctypeShorthand::OneDotOne);
+        data = DoctypeData(value, DoctypeShorthand::OneDotOne);
     } else if (value == "basic") {
-        data = new DoctypeData(value, DoctypeShorthand::Basic);
+        data = DoctypeData(value, DoctypeShorthand::Basic);
     } else if (value == "mobile") {
-        data = new DoctypeData(value, DoctypeShorthand::Mobile);
+        data = DoctypeData(value, DoctypeShorthand::Mobile);
     } else if (value == "plist") {
-        data = new DoctypeData(value, DoctypeShorthand::Plist);
+        data = DoctypeData(value, DoctypeShorthand::Plist);
     } else {
-        data = new DoctypeData(value, DoctypeShorthand::Other);
+        data = DoctypeData(value, DoctypeShorthand::Other);
     }
 
     return true;
 }
 
-bool Scanner::scanTag(TagData *&data) {
+bool Scanner::scanTag(TagData &data) {
     // Data required for the tag
     String name = "";
     String idLiteral = "";
     String classLiteral = "";
     std::vector<Attribute> attributes = std::vector<Attribute>();
     bool forcedVoidElement = false;
-    String *text = new String("");
+    String text = "";
 
     // Get the tag name
     if (isIdentifierPart()) {
@@ -478,8 +473,7 @@ bool Scanner::scanTag(TagData *&data) {
     // Scan attributes if there are any (should be after the id literal)
     if (check('(')) {
         // Get the additional attributes
-        if (!scanTagAttributes(&attributes)) {
-            delete text;
+        if (!scanTagAttributes(attributes)) {
             // Error output from `scanTagAttributes()`
             return false;
         }
@@ -491,22 +485,19 @@ bool Scanner::scanTag(TagData *&data) {
         forcedVoidElement = true;
     } else if (check(' ') || check(".\n")) {
         if (!scanTagText(text)) {
-            delete text;
             // Error output from `scanTagText()`
             return false;
         }
     } else if (!check(':') && !check('\n')) {
-        delete text;
         printErrorUnexpectedChar("Error 1-5");
         return false;
     }
 
-    data = new TagData(name, attributes, forcedVoidElement, *text);
-    delete text;
+    data = TagData(name, attributes, forcedVoidElement, text);
     return true;
 }
 
-bool Scanner::scanTagAttributes(std::vector<Attribute> *attributes) {
+bool Scanner::scanTagAttributes(std::vector<Attribute> &attributes) {
     // Ignore the leading '('
     if (check('(')) {
         ignore();
@@ -594,17 +585,11 @@ bool Scanner::scanTagAttributes(std::vector<Attribute> *attributes) {
                 ignore();
             } else if (check('(') || check("True") || check("False")
                        || check("IO_") || isDigit()) {
-                bool *exprResult = new bool(false);
-
-                if (!scanExpression(exprResult)) {
-                    delete exprResult;
+                if (!scanExpression(checked)) {
                     // Error output from `scanExpression()`
                     return false;
                 }
-
                 booleanAttribute = true;
-                checked = *exprResult;
-                delete exprResult;
             } else {
                 printErrorUnexpectedChar("Error 1-7");
                 return false;
@@ -623,16 +608,16 @@ bool Scanner::scanTagAttributes(std::vector<Attribute> *attributes) {
 
             // Was it an empty space before a comma?
             if (key == "" && !quotedAttribute) {
-                attributes->push_back(Attribute());
+                attributes.push_back(Attribute());
                 continue;
             }
         }
 
         // Add the attribute
         if (booleanAttribute) {
-            attributes->push_back(Attribute(key, checked));
+            attributes.push_back(Attribute(key, checked));
         } else {
-            attributes->push_back(Attribute(key, value));
+            attributes.push_back(Attribute(key, value));
         }
     }
 
@@ -642,7 +627,7 @@ bool Scanner::scanTagAttributes(std::vector<Attribute> *attributes) {
     return true;
 }
 
-bool Scanner::scanTagText(String *value) {
+bool Scanner::scanTagText(String &value) {
     // Inline in a tag or block in a tag?
     if (check(' ')) {
         // Ignore the leading space
@@ -665,7 +650,7 @@ bool Scanner::scanTagText(String *value) {
     return true;
 }
 
-bool Scanner::scanTagTextInline(String *value) {
+bool Scanner::scanTagTextInline(String &value) {
     // Depending on if we are in a interpolation
     if (interpolationLevel_ > 0) {
         // Consume until the end of the interpolation or the start of a new interpolation
@@ -688,7 +673,7 @@ bool Scanner::scanTagTextInline(String *value) {
     return true;
 }
 
-bool Scanner::scanTagTextBlock(String *value) {
+bool Scanner::scanTagTextBlock(String &value) {
     // Consume until the end of the first line
     while (!check('\n') && !check("#[")) {
         if (!scanTagTextPart(value)) {
@@ -700,7 +685,7 @@ bool Scanner::scanTagTextBlock(String *value) {
     // While indentation is higher, consume lines
     while (nextLineIndentationIsHigher()) {
         // Consume the '\n' of the current line, ignore the first (except when we are already in a block in a tag)
-        if (*value != "" || inBlockInATag_) {
+        if (value != "" || inBlockInATag_) {
             if (!scanTagTextPart(value)) {
                 // Error output from `scanTagTextPart()`
                 return false;
@@ -731,22 +716,20 @@ bool Scanner::scanTagTextBlock(String *value) {
     return true;
 }
 
-bool Scanner::scanTagTextPart(String *value) {
+bool Scanner::scanTagTextPart(String &value) {
     if (check("#{IO_")) {
         // Ignore the "#{"
         ignore(2);
 
         // Get the GPIO value
-        uint *gpio = new uint(0);
+        uint gpio = 0;
 
         if (!scanGPIOValue(gpio)) {
-            delete gpio;
             // Error output from `scanGPIOValue()`
             return false;
         }
 
-        *value += String(*gpio);
-        delete gpio;
+        value += String(gpio);
 
         if (!check("}")) {
             printErrorUnexpectedChar("Error 1-8");
@@ -755,13 +738,13 @@ bool Scanner::scanTagTextPart(String *value) {
             ignore();
         }
     } else {
-        *value += consume();
+        value += consume();
     }
 
     return true;
 }
 
-bool Scanner::scanText(TextData *&data) {
+bool Scanner::scanText(TextData &data) {
     // Type of the text
     if (check('<')) {
         // Error output from `scanTextLiteralHTML()`
@@ -778,7 +761,7 @@ bool Scanner::scanText(TextData *&data) {
     }
 }
 
-bool Scanner::scanTextLiteralHTML(TextData *&data) {
+bool Scanner::scanTextLiteralHTML(TextData &data) {
     String value = "";
 
     // Consume until the '\n'
@@ -786,30 +769,28 @@ bool Scanner::scanTextLiteralHTML(TextData *&data) {
         value += consume();
     }
 
-    data = new TextData(value, TextType::LiteralHTML);
+    data = TextData(value, TextType::LiteralHTML);
     return true;
 }
 
-bool Scanner::scanTextPipedText(TextData *&data) {
+bool Scanner::scanTextPipedText(TextData &data) {
     // Ignore the leading '|' and following whitespaces
     ignore();
     ignoreWhitespaces();
 
-    String *value = new String("");
+    String value = "";
 
     if (!scanTagTextInline(value)) {
-        delete value;
         // Error output from `scanTagTextInline()`
         return false;
     }
 
-    data = new TextData(*value, TextType::PipedText);
-    delete value;
+    data = TextData(value, TextType::PipedText);
     return true;
 }
 
-bool Scanner::scanTextInterpolationEnd(TextData *&data) {
-    String *value = new String("");
+bool Scanner::scanTextInterpolationEnd(TextData &data) {
+    String value = "";
 
     // Ignore the leading ']'
     ignore();
@@ -817,20 +798,17 @@ bool Scanner::scanTextInterpolationEnd(TextData *&data) {
     // Cunsume debending on if we are in a block in a tag
     if (inBlockInATag_ && interpolationLevel_ == 0) {
         if (!scanTagTextBlock(value)) {
-            delete value;
             // Error output from `scanTagTextBlock()`
             return false;
         }
     } else {
         if (!scanTagTextInline(value)) {
-            delete value;
             // Error output from `scanTagTextInline()`
             return false;
         }
     }
 
-    data = new TextData(*value, TextType::InnerText);
-    delete value;
+    data = TextData(value, TextType::InnerText);
     return true;
 }
 
@@ -854,7 +832,7 @@ bool Scanner::ignoreComment() {
     return true;
 }
 
-bool Scanner::scanComment(CommentData *&data) {
+bool Scanner::scanComment(CommentData &data) {
     // Ignore the leading "//"
     ignore(2);
 
@@ -888,11 +866,11 @@ bool Scanner::scanComment(CommentData *&data) {
         }
     }
 
-    data = new CommentData(value);
+    data = CommentData(value);
     return true;
 }
 
-bool Scanner::scanInclude(IncludeData *&data) {
+bool Scanner::scanInclude(IncludeData &data) {
     // Ignore the leading "include"
     ignore(7);
 
@@ -906,34 +884,34 @@ bool Scanner::scanInclude(IncludeData *&data) {
         path += consume();
     }
 
-    data = new IncludeData(path);
+    data = IncludeData(path);
     return true;
 }
 
-bool Scanner::scanGPIOValue(uint *&result) {
+bool Scanner::scanGPIOValue(uint &result) {
     if (check("IO_LED")) {
         ignore(6);
-        *result = aalec.get_led();
+        result = aalec.get_led();
         return true;
     } else if (check("IO_BUTTON")) {
         ignore(9);
-        *result = aalec.get_button();
+        result = aalec.get_button();
         return true;
     } else if (check("IO_ROTATE")) {
         ignore(9);
-        *result = aalec.get_rotate();
+        result = aalec.get_rotate();
         return true;
     } else if (check("IO_TEMP")) {
         ignore(7);
-        *result = aalec.get_temp();
+        result = aalec.get_temp();
         return true;
     } else if (check("IO_HUMIDITY")) {
         ignore(11);
-        *result = aalec.get_humidity();
+        result = aalec.get_humidity();
         return true;
     } else if (check("IO_ANALOG")) {
         ignore(9);
-        *result = aalec.get_analog();
+        result = aalec.get_analog();
         return true;
     } else {
         printErrorUnexpectedChar("Error 1-10");
@@ -941,22 +919,18 @@ bool Scanner::scanGPIOValue(uint *&result) {
     }
 }
 
-bool Scanner::scanExpression(bool *&result) {
+bool Scanner::scanExpression(bool &result) {
     if (check('(')) {
         // Ignore the '(' and following whitespace
         ignore();
         ignoreWhitespaces();
 
-        u32 *firstExprResult = new u32(0);
-        bool *firstIsTrue = new bool(false);
-        u32 *secondExprResult = new u32(0);
-        bool *secondIsTrue = new bool(false);
+        u32 firstExprResult = 0;
+        bool firstIsTrue = false;
+        u32 secondExprResult = 0;
+        bool secondIsTrue = false;
 
         if (!scanExpressionEvaluate(firstExprResult, firstIsTrue)) {
-            delete firstExprResult;
-            delete firstIsTrue;
-            delete secondExprResult;
-            delete secondIsTrue;
             // Error output from `scanExpressionEvaluate()`
             return false;
         }
@@ -964,11 +938,6 @@ bool Scanner::scanExpression(bool *&result) {
         // Ignore the '=' and surounding whitespace
         ignoreWhitespaces();
         if (!check('=')) {
-            delete firstExprResult;
-            delete firstIsTrue;
-            delete secondExprResult;
-            delete secondIsTrue;
-
             printErrorUnexpectedChar("Error 1-11");
             return false;
         } else {
@@ -977,85 +946,69 @@ bool Scanner::scanExpression(bool *&result) {
         ignoreWhitespaces();
 
         if (!scanExpressionEvaluate(secondExprResult, secondIsTrue)) {
-            delete firstExprResult;
-            delete firstIsTrue;
-            delete secondExprResult;
-            delete secondIsTrue;
             // Error output from `scanExpressionEvaluate()`
             return false;
         }
 
-        if (*firstIsTrue && *secondIsTrue) {
-            *result = true;
-        } else if (*firstIsTrue) {
-            *result = *secondExprResult != 0;
-        } else if (*secondIsTrue) {
-            *result = *firstExprResult != 0;
+        if (firstIsTrue && secondIsTrue) {
+            result = true;
+        } else if (firstIsTrue) {
+            result = secondExprResult != 0;
+        } else if (secondIsTrue) {
+            result = firstExprResult != 0;
         } else {
-            *result = *firstExprResult == *secondExprResult;
+            result = firstExprResult == secondExprResult;
         }
 
         // Ignore the closing ')', and whitespace before it
         ignoreWhitespaces();
         if (!check(')')) {
-            delete firstExprResult;
-            delete firstIsTrue;
-            delete secondExprResult;
-            delete secondIsTrue;
             printErrorUnexpectedChar("Error 1-12");
             return false;
         } else {
             ignore();
         }
 
-        delete firstExprResult;
-        delete firstIsTrue;
-        delete secondExprResult;
-        delete secondIsTrue;
         return true;
     } else {
-        u32 *exprResult = new u32(0);
-        bool *isTrue = new bool(false);
+        u32 exprResult = 0;
+        bool isTrue = false;
 
         if (!scanExpressionEvaluate(exprResult, isTrue)) {
-            delete exprResult;
-            delete isTrue;
             // Error output from `scanExpressionEvaluate()`
             return false;
         }
 
-        *result = *isTrue || *exprResult != 0;
+        result = isTrue || exprResult != 0;
 
-        delete exprResult;
-        delete isTrue;
         return true;
     }
 }
 
-bool Scanner::scanExpressionEvaluate(u32 *&result, bool *&isTrue) {
+bool Scanner::scanExpressionEvaluate(u32 &result, bool &isTrue) {
     if (check("True")) {
         ignore(4);
-        *result = 1;
-        *isTrue = true;
+        result = 1;
+        isTrue = true;
         return true;
     } else if (check("False")) {
         ignore(5);
-        *result = 0;
-        *isTrue = false;
+        result = 0;
+        isTrue = false;
         return true;
     } else if (isDigit()) {
         String value = "";
         while (isDigit()) {
             value += consume();
         }
-        *result = value.toInt();
-        *isTrue = false;
+        result = value.toInt();
+        isTrue = false;
         return true;
     } else if (check("IO_")) {
         if (!scanGPIOValue(result)) {
             return false;
         }
-        *isTrue = false;
+        isTrue = false;
         return true;
     } else {
         printErrorUnexpectedChar("Error 1-13");
@@ -1099,9 +1052,8 @@ bool Scanner::scanConditional() {
             ignoreWhitespaces();
 
             // Evaluate the expression
-            bool *exprResult = new bool(false);
+            bool exprResult = false;
             if (!scanExpression(exprResult)) {
-                delete exprResult;
                 // Error output from `scanExpression()`
                 return false;
             }
@@ -1109,7 +1061,6 @@ bool Scanner::scanConditional() {
             // Ignore the following whitespace and the ':'
             ignoreWhitespaces();
             if (!check(":\n")) {
-                delete exprResult;
                 printErrorUnexpectedChar("Error 1-14");
                 return false;
             } else {
@@ -1117,8 +1068,7 @@ bool Scanner::scanConditional() {
             }
 
             // If the exrpession evaluated to true, we are done
-            if (*exprResult) {
-                delete exprResult;
+            if (exprResult) {
                 indentations_.push_back(Indentation(IndentationType::Conditional
                 ));
                 return true;
@@ -1150,9 +1100,8 @@ bool Scanner::scanConditional() {
             ignoreWhitespaces();
 
             // Evaluate the expression
-            bool *exprResult = new bool(false);
+            bool exprResult = false;
             if (!scanExpression(exprResult)) {
-                delete exprResult;
                 // Error output from `scanExpression()`
                 return false;
             }
@@ -1160,7 +1109,6 @@ bool Scanner::scanConditional() {
             // Ignore the following whitespace and the ':'
             ignoreWhitespaces();
             if (!check(":\n")) {
-                delete exprResult;
                 printErrorUnexpectedChar("Error 1-15");
                 return false;
             } else {
@@ -1168,8 +1116,7 @@ bool Scanner::scanConditional() {
             }
 
             // If the exrpession evaluated to false, we are done
-            if (!*exprResult) {
-                delete exprResult;
+            if (!exprResult) {
                 indentations_.push_back(Indentation(IndentationType::Conditional
                 ));
                 return true;

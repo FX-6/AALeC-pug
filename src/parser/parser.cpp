@@ -23,9 +23,8 @@ bool Parser::parse() {
 
     // Parse it
     while (true) {
-        std::vector<Token> *tokens = new std::vector<Token>();
+        std::vector<Token> tokens = std::vector<Token>();
         if (!scanner_.scanPart(tokens)) {
-            delete tokens;
             outFile_.close();
             return false;
         }
@@ -62,7 +61,6 @@ bool Parser::parse() {
                 break;
             case TokenType::Include:
                 if (!parseInclude(token.include)) {
-                    delete tokens;
                     outFile_.close();
                     return false;
                 }
@@ -80,10 +78,8 @@ bool Parser::parse() {
             }
 
             // End the loop
-            delete tokens;
             break;
-        } else if (token.type != TokenType::EndOfPart || tokens->size() > 0) {
-            delete tokens;
+        } else if (token.type != TokenType::EndOfPart || tokens.size() > 0) {
             outFile_.close();
             Serial.printf("Error 2-2: unexpected token\n");
             return false;
@@ -96,9 +92,9 @@ bool Parser::parse() {
     return true;
 }
 
-Token Parser::nextToken(std::vector<Token> *tokens) {
-    Token token = tokens->front();
-    tokens->erase(tokens->begin());
+Token Parser::nextToken(std::vector<Token> &tokens) {
+    Token token = tokens.front();
+    tokens.erase(tokens.begin());
     return token;
 }
 
@@ -145,10 +141,10 @@ void Parser::handleTextNewline(TextType textType) {
     }
 }
 
-void Parser::parseDoctype(DoctypeData *data) {
+void Parser::parseDoctype(DoctypeData data) {
     // Set the current doctype if its not set yet
     if (doctype_ == DoctypeDialect::None) {
-        switch (data->doctypeType) {
+        switch (data.doctypeType) {
             case DoctypeShorthand::Html:
                 doctype_ = DoctypeDialect::HTML;
                 break;
@@ -164,20 +160,20 @@ void Parser::parseDoctype(DoctypeData *data) {
     }
 
     // Append the HTML to the output
-    outFile_.print(data->toHTMLString());
+    outFile_.print(data.toHTMLString());
 }
 
-void Parser::parseTag(TagData *data) {
+void Parser::parseTag(TagData data) {
     // Close previous tag if not indentet
     closeTagIfNecessary();
     // Handle the pipe newline
     handleTextNewline();
 
     // Open the tag
-    outFile_.printf("<%s", data->name.c_str());
+    outFile_.printf("<%s", data.name.c_str());
 
     // Add attributes
-    for (Attribute attribute : data->attributes) {
+    for (Attribute attribute : data.attributes) {
         // Skip boolean attributes with no value
         if (attribute.booleanAttribute && !attribute.checked) {
             continue;
@@ -193,17 +189,17 @@ void Parser::parseTag(TagData *data) {
     }
 
     // (Forced) void element?
-    if (data->isVoidElement) {
+    if (data.isVoidElement) {
         outFile_.print("/>");
 
         tags_.push_back("");
-    } else if (isVoidElement(data->name)) {
+    } else if (isVoidElement(data.name)) {
         switch (doctype_) {
             case DoctypeDialect::HTML:
                 outFile_.print(">");
                 break;
             case DoctypeDialect::XML:
-                outFile_.printf("></%s>", data->name.c_str());
+                outFile_.printf("></%s>", data.name.c_str());
                 break;
             case DoctypeDialect::None:
                 outFile_.print("/>");
@@ -211,48 +207,48 @@ void Parser::parseTag(TagData *data) {
 
         tags_.push_back("");
     } else {
-        outFile_.printf(">%s", data->text.c_str());
-        tags_.push_back(data->name);
+        outFile_.printf(">%s", data.text.c_str());
+        tags_.push_back(data.name);
     }
 }
 
-void Parser::parseText(TextData *data) {
+void Parser::parseText(TextData data) {
     // Close previous tag if not indentet
     closeTagIfNecessary();
     // Handle the pipe newline
-    handleTextNewline(data->textType);
+    handleTextNewline(data.textType);
 
     // Add the text to the output
-    outFile_.print(data->value.c_str());
+    outFile_.print(data.value.c_str());
 
     tags_.push_back("");
 }
 
-void Parser::parseComment(CommentData *data) {
+void Parser::parseComment(CommentData data) {
     // Close previous tag if not indentet
     closeTagIfNecessary();
     // Handle the pipe newline
     handleTextNewline();
 
     // Add the comment to the output
-    outFile_.printf("<!--%s-->", data->value.c_str());
+    outFile_.printf("<!--%s-->", data.value.c_str());
 
     tags_.push_back("");
 }
 
-bool Parser::parseInclude(IncludeData *data) {
+bool Parser::parseInclude(IncludeData data) {
     // Close previous tag if not indentet
     closeTagIfNecessary();
     // Handle the pipe newline
     handleTextNewline();
 
     // Get the directory path
-    String direcotryPath = data->path[0] != '/'
+    String direcotryPath = data.path[0] != '/'
         ? inPath_.substring(0, inPath_.lastIndexOf("/") + 1)
         : "";
 
     // Get the includeFilePath
-    String includeFilePath = direcotryPath + data->path;
+    String includeFilePath = direcotryPath + data.path;
 
     // Check for recursion
     if (includeFilePath == inPath_) {
@@ -274,7 +270,7 @@ bool Parser::parseInclude(IncludeData *data) {
     }
 
     // Parse the file if it is a pug file
-    if (includeFilePath.length() > 5 && data->path.endsWith(".pug")) {
+    if (includeFilePath.length() > 5 && data.path.endsWith(".pug")) {
         // Close the source file
         includeFile.close();
 

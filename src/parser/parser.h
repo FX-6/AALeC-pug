@@ -84,7 +84,7 @@ class Parser {
      * @param tokens The vector of tokens
      * @return Token The next token
      */
-    Token nextToken(std::vector<Token> *tokens);
+    Token nextToken(std::vector<Token> &tokens);
 
     /**
      * @brief Whether the tag is a void element by default
@@ -115,38 +115,38 @@ class Parser {
     /**
      * @brief Parse a Doctype Token
      *
-     * @param data Pointer to the doctype data
+     * @param data The doctype data
      */
-    void parseDoctype(DoctypeData *data);
+    void parseDoctype(DoctypeData data);
 
     /**
      * @brief Parse a Tag Token
      *
-     * @param data Pointer to the tag data
+     * @param data The tag data
      */
-    void parseTag(TagData *data);
+    void parseTag(TagData data);
 
     /**
      * @brief Parse a Text Token
      *
-     * @param data Pointer to the text data
+     * @param data The text data
      */
-    void parseText(TextData *data);
+    void parseText(TextData data);
 
     /**
      * @brief Parse a Comment Token
      *
-     * @param data Pointer to the comment data
+     * @param data The comment data
      */
-    void parseComment(CommentData *data);
+    void parseComment(CommentData data);
 
     /**
      * @brief Parse a Include Token
      *
-     * @param data Pointer to the include data
+     * @param data The include data
      * @return bool Wheter the parsing was successful, see serial output for errors
      */
-    bool parseInclude(IncludeData *data);
+    bool parseInclude(IncludeData data);
 };
 
 #endif  // PARSER_H

@@ -268,14 +268,29 @@ class Token {
     TokenType type;
 
     /**
-     * @brief Specific data for the token
-     * ToDo: Use a union?
+     * @brief Specific data for the Doctype Token
      */
-    DoctypeData *doctype;
-    TagData *tag;
-    TextData *text;
-    CommentData *comment;
-    IncludeData *include;
+    DoctypeData doctype;
+
+    /**
+     * @brief Specific data for the Tag Token
+     */
+    TagData tag;
+
+    /**
+     * @brief Specific data for the Text Token
+     */
+    TextData text;
+
+    /**
+     * @brief Specific data for the Comment Token
+     */
+    CommentData comment;
+
+    /**
+     * @brief Specific data for the Include Token
+     */
+    IncludeData include;
 
     /**
      * @brief Construct a new Generic Token object
@@ -289,35 +304,35 @@ class Token {
      *
      * @param data Data about the Doctype Token
      */
-    Token(DoctypeData *data);
+    Token(DoctypeData data);
 
     /**
      * @brief Construct a new Tag Token object
      *
      * @param data Data about the Tag Token
      */
-    Token(TagData *data);
+    Token(TagData data);
 
     /**
      * @brief Construct a new Text Token object
      *
      * @param data Data about the Text Token
      */
-    Token(TextData *data);
+    Token(TextData data);
 
     /**
      * @brief Construct a new Comment Token object
      *
      * @param data Data about the Comment Token
      */
-    Token(CommentData *data);
+    Token(CommentData data);
 
     /**
      * @brief Construct a new Include Token object
      *
      * @param data Data about the Include Token
      */
-    Token(IncludeData *data);
+    Token(IncludeData data);
 };
 
 #endif  // TOKEN_H

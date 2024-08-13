@@ -97,7 +97,7 @@ class Scanner {
      *               ends with an EndOfPart or EndOfSource Token.
      * @return bool Wether scanning was successfull, see serial output for errors
      */
-    bool scanPart(std::vector<Token> *tokens);
+    bool scanPart(std::vector<Token> &tokens);
 
    private:
     // Helper functions
@@ -204,25 +204,25 @@ class Scanner {
      * @param tokens Appends the Indent/Dedent Tokens to this vector
      * @return bool Wether scanning was successfull, see serial output for errors
      */
-    bool scanIndentation(std::vector<Token> *tokens);
+    bool scanIndentation(std::vector<Token> &tokens);
 
     /**
      * @brief Scans a doctype tag.
      *        Expects "doctype" at the beginning
      *
-     * @param data Writes the data to this pointer
+     * @param data Location to write the data to
      * @return bool Wther scanning was successfull, see serial output for errors
      */
-    bool scanDoctype(DoctypeData *&data);
+    bool scanDoctype(DoctypeData &data);
 
     /**
      * @brief Scans a generic tag.
      *        Expects a identifier part at the beginning
      *
-     * @param data Writes the data to this pointer
+     * @param data Location to write the data to
      * @return bool Wether scanning was successfull, see serial output for errors
      */
-    bool scanTag(TagData *&data);
+    bool scanTag(TagData &data);
 
     /**
      * @brief Scans the attributes of a tag.
@@ -231,7 +231,7 @@ class Scanner {
      * @param attributes Appends the attributes to this vector
      * @return bool Wether scanning was successfull, see serial output for errors
      */
-    bool scanTagAttributes(std::vector<Attribute> *attributes);
+    bool scanTagAttributes(std::vector<Attribute> &attributes);
 
     /**
      * @brief Scans the inner text of a tag.
@@ -240,7 +240,7 @@ class Scanner {
      * @param value The scanned text
      * @return bool Wether scanning was successfull, see serial output for errors
      */
-    bool scanTagText(String *value);
+    bool scanTagText(String &value);
 
     /**
      * @brief Scans the inline inner text of a tag.
@@ -249,7 +249,7 @@ class Scanner {
      * @param value The scanned text
      * @return bool Wether scanning was successfull, see serial output for errors
      */
-    bool scanTagTextInline(String *value);
+    bool scanTagTextInline(String &value);
 
     /**
      * @brief Scans the block in a tag inner text of a tag.
@@ -258,7 +258,7 @@ class Scanner {
      * @param value The scanned text
      * @return bool Wether scanning was successfull, see serial output for errors
      */
-    bool scanTagTextBlock(String *value);
+    bool scanTagTextBlock(String &value);
 
     /**
      * @brief Scans the next part of the tag text and appends it to the value.
@@ -266,43 +266,43 @@ class Scanner {
      * @param value The scanned text is appended to this string
      * @return bool Wether scanning was successfull, see serial output for errors
      */
-    bool scanTagTextPart(String *value);
+    bool scanTagTextPart(String &value);
 
     /**
      * @brief Scans Text.
      *        Expects a '<', '|', or ']' at the beginning.
      *
-     * @param data Writes the data to this pointer
+     * @param data Location to write the data to
      * @return bool Wether scanning was successfull, see serial output for errors
      */
-    bool scanText(TextData *&data);
+    bool scanText(TextData &data);
 
     /**
      * @brief Scans Literal HTML Text.
      *        Expects a '<' at the beginning.
      *
-     * @param data Writes the data to this pointer
+     * @param data Location to write the data to
      * @return bool Wether scanning was successfull, see serial output for errors
      */
-    bool scanTextLiteralHTML(TextData *&data);
+    bool scanTextLiteralHTML(TextData &data);
 
     /**
      * @brief Scans Piped Text.
      *        Expects a '|' at the beginning.
      *
-     * @param data Writes the data to this pointer
+     * @param data Location to write the data to
      * @return bool Wether scanning was successfull, see serial output for errors
      */
-    bool scanTextPipedText(TextData *&data);
+    bool scanTextPipedText(TextData &data);
 
     /**
      * @brief Scans Inner Text after an Interpolation.
      *        Expects a ']' at the beginning.
      *
-     * @param data Writes the data to this pointer
+     * @param data Location to write the data to
      * @return bool Wether scanning was successfull, see serial output for errors
      */
-    bool scanTextInterpolationEnd(TextData *&data);
+    bool scanTextInterpolationEnd(TextData &data);
 
     /**
      * @brief Ignores a comment.
@@ -316,28 +316,28 @@ class Scanner {
      * @brief Scans a comment.
      *        Expects a "//" at the beginning
      *
-     * @param data Writes the data to this pointer
+     * @param data Location to write the data to
      * @return bool Wether scanning was successfull, see serial output for errors
      */
-    bool scanComment(CommentData *&data);
+    bool scanComment(CommentData &data);
 
     /**
      * @brief Scans a include.
      *        Expects a "include" at the beginning
      *
-     * @param data Writes the data to this pointer
+     * @param data Location to write the data to
      * @return bool Wether scanning was successfull, see serial output for errors
      */
-    bool scanInclude(IncludeData *&data);
+    bool scanInclude(IncludeData &data);
 
     /**
      * @brief Gets the value of a GPIO Pin.
      *        Expects "IO_" at the beginning
      *
-     * @param result The value of the GPIO Pin is written to this pointer
+     * @param result Value of the GPIO Pin
      * @return bool Wether scanning was successfull, see serial output for errors
      */
-    bool scanGPIOValue(uint *&result);
+    bool scanGPIOValue(uint &result);
 
     /**
      * @brief Evaluates an expression.
@@ -346,7 +346,7 @@ class Scanner {
      * @param result Result of the expression evaluation
      * @return bool Wether scanning was successfull, see the serial output for more information
      */
-    bool scanExpression(bool *&result);
+    bool scanExpression(bool &result);
 
     /**
      * @brief Evaluates an expression.
@@ -356,7 +356,7 @@ class Scanner {
      * @param isTrue Wheter the expression was `True`
      * @return bool Wheter evaluation was successfull, see serial output for errors
      */
-    bool scanExpressionEvaluate(u32 *&result, bool *&isTrue);
+    bool scanExpressionEvaluate(u32 &result, bool &isTrue);
 
     /**
      * @brief Scans a conditional.

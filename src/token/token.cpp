@@ -2,15 +2,15 @@
 
 Token::Token(TokenType type) : type(type) {}
 
-Token::Token(DoctypeData *data) : type(TokenType::Doctype), doctype(data) {}
+Token::Token(DoctypeData data) : type(TokenType::Doctype), doctype(data) {}
 
-Token::Token(TagData *data) : type(TokenType::Tag), tag(data) {}
+Token::Token(TagData data) : type(TokenType::Tag), tag(data) {}
 
-Token::Token(TextData *data) : type(TokenType::Text), text(data) {}
+Token::Token(TextData data) : type(TokenType::Text), text(data) {}
 
-Token::Token(CommentData *data) : type(TokenType::Comment), comment(data) {}
+Token::Token(CommentData data) : type(TokenType::Comment), comment(data) {}
 
-Token::Token(IncludeData *data) : type(TokenType::Include), include(data) {}
+Token::Token(IncludeData data) : type(TokenType::Include), include(data) {}
 
 DoctypeData::DoctypeData() : value(""), doctypeType(DoctypeShorthand::Other) {}
 
