@@ -26,6 +26,13 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
     }
     inFile_.seek(lastPosition_, SeekSet);
 
+    // Ignore empty lines
+    while (isEmptyLine()) {
+        // Ignore the whitespaces and the following '\n'
+        ignoreWhitespaces();
+        ignore();
+    }
+
     // Scan the indentation if thers is any
     if (isWhitespace()) {
         if (!scanIndentation(tokens)) {
@@ -229,6 +236,22 @@ bool Scanner::isDigit() {
 
 bool Scanner::isIdentifierPart() {
     return isAlphaNumeric(inFile_.peek()) || check('_');
+}
+
+bool Scanner::isEmptyLine() {
+    int startPostion = inFile_.position();
+    bool res = false;
+
+    while (isWhitespace()) {
+        ignore();
+    }
+
+    if (check('\n')) {
+        res = true;
+    }
+
+    inFile_.seek(startPostion, SeekSet);
+    return res;
 }
 
 bool Scanner::isEndOfSource() {

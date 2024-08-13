@@ -167,6 +167,13 @@ class Scanner {
     bool isIdentifierPart();
 
     /**
+     * @brief Checks if the current line is empty (only whitespaces)
+     *
+     * @return bool Wether the current line is empty
+     */
+    bool isEmptyLine();
+
+    /**
      * @brief Checks if the source is at the end
      *
      * @return bool Wether the source is at the end
