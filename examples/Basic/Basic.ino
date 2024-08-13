@@ -144,11 +144,22 @@ void sendPug(String path) {
     // Open the pug file
     File pugFile = LittleFS.open(path, "r");
 
-    // Check if the pug file exists
+    // Check if the pug file exists and is a file
     if (!pugFile.isFile()) {
+        // Doesn't exitst or isn't a file
+
+        // Close the file
+        pugFile.close();
+
+        // Send a 404 error
         server.send(404, "text/plain", "PUG File not found: '" + path + "'");
+
+        // Early return
         return;
     }
+
+    // Close the file
+    pugFile.close();
 
     // Create the compiled file path
     String outFilePath = path + ".html";
@@ -167,32 +178,52 @@ void sendPug(String path) {
     // Open the compiled file
     File outFile = LittleFS.open(outFilePath, "r");
 
-    // Check if the compiled file exists
+    // Check if the compiled file exists and is a file
     if (!outFile.isFile()) {
         // Failed to open the compiled file
+
+        // Close the file
+        outFile.close();
+
+        // Send a 500 error
         server.send(
             500,
             "text/plain",
             "Failed to read compiled PUG file '" + outFilePath + "'"
         );
+
+        // Early return
         return;
     }
 
     // Send the compiled file
     server.streamFile(outFile, "text/html");
+
+    // Close the file
+    outFile.close();
 }
 
 void sendFile(String path) {
     // Open the file
     File file = LittleFS.open(path, "r");
 
-    // Check if the file exists
+    // Check if the file exists or is a file
     if (!file.isFile()) {
         // File not found or is not a file
+
+        // Close the file
+        file.close();
+
+        // Send a 404 error
         server.send(404, "text/plain", "Normal File not found: '" + path + "'");
+
+        // Early return
         return;
     }
 
     // Send the file
     server.streamFile(file, getMimeType(path));
+
+    // Close the file
+    file.close();
 }
