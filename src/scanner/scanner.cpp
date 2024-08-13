@@ -2,9 +2,13 @@
 
 #include <AALec-V2.h>
 
+Indentation::Indentation(IndentationType type, int size) :
+    type(type),
+    size(size) {}
+
 Scanner::Scanner(String inPath) :
     indentationChar_('.'),
-    indentationLevel_(std::vector<int>()),
+    indentations_(std::vector<Indentation>()),
     inBlockInATag_(false),
     interpolationLevel_(0) {
     inFile_ = LittleFS.open(inPath, "r");
@@ -26,44 +30,59 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
     // Scan the indentation if thers is any
     if (isWhitespace()) {
         if (!scanIndentation(tokens)) {
+            // Error output from `scanIndentation()`
             return false;
         }
 
-        // Remove additional 0 size indentations from block expansion
-        if (indentationLevel_.size() > 0 && indentationLevel_.back() == 0) {
-            indentationLevel_.pop_back();
-            tokens->push_back(Token(TokenType::Dedent));
+        // Remove additional indentations from block expansion
+        while (indentations_.size() > 0) {
+            if (indentations_.back().type == IndentationType::BlockExpansion) {
+                indentations_.pop_back();
+                tokens->push_back(Token(TokenType::Dedent));
+            } else {
+                break;
+            }
         }
     } else if (check(':')) {
         // Block expansion, add a Indent Token and a 0 size indent level
         tokens->push_back(Token(TokenType::Indent));
-        indentationLevel_.push_back(0);
+        indentations_.push_back(Indentation(IndentationType::BlockExpansion));
 
         // Ignore the colon and following whitespace
         ignore();
         ignoreWhitespaces();
     } else if (check("#[")) {
         interpolationLevel_++;
-        indentationLevel_.push_back(0);
+        indentations_.push_back(Indentation(IndentationType::TagInterpolation));
         tokens->push_back(Token(TokenType::Indent));
         ignore(2);
     } else if (check(']')) {
         interpolationLevel_--;
         if (interpolationLevel_ > 0) {
-            indentationLevel_.pop_back();
+            indentations_.pop_back();
             tokens->push_back(Token(TokenType::Dedent));
         }
-    } else if (indentationLevel_.size() > 0) {
+    } else if (indentations_.size() > 0) {
         // If there is an indentation level, but no indentation, its a dedent
-        while (indentationLevel_.size() > 0) {
-            indentationLevel_.pop_back();
-            tokens->push_back(Token(TokenType::Dedent));
+        while (indentations_.size() > 0) {
+            if (indentations_.back().type != IndentationType::Conditional) {
+                tokens->push_back(Token(TokenType::Dedent));
+            }
+            indentations_.pop_back();
         }
 
-        // Remove additional 0 size indentations from block expansion
-        if (indentationLevel_.size() > 0 && indentationLevel_.back() == 0) {
-            indentationLevel_.pop_back();
-            tokens->push_back(Token(TokenType::Dedent));
+        // Remove additional indentations from block expansion and conditionals
+        while (indentations_.size() > 0) {
+            Indentation back = indentations_.back();
+
+            if (back.type == IndentationType::BlockExpansion) {
+                indentations_.pop_back();
+                tokens->push_back(Token(TokenType::Dedent));
+            } else if (back.type == IndentationType::Conditional) {
+                indentations_.pop_back();
+            } else {
+                break;
+            }
         }
     }
 
@@ -71,35 +90,46 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
     if (check("doctype")) {
         DoctypeData *data = nullptr;
         if (!scanDoctype(data)) {
+            // Error output from `scanDoctype()`
             return false;
         }
         tokens->push_back(Token(data));
     } else if (check("<") || check('|') || check(']')) {
         TextData *data = nullptr;
         if (!scanText(data)) {
+            // Error output from `scanText()`
             return false;
         }
         tokens->push_back(Token(data));
     } else if (check("//-")) {
         if (!ignoreComment()) {
+            // Error output from `ignoreComment()`
             return false;
         }
     } else if (check("//")) {
         CommentData *data = nullptr;
         if (!scanComment(data)) {
+            // Error output from `scanComment()`
             return false;
         }
         tokens->push_back(Token(data));
     } else if (check("include")) {
         IncludeData *data = nullptr;
         if (!scanInclude(data)) {
+            // Error output from `scanInclude()`
             return false;
         }
         tokens->push_back(Token(data));
+    } else if (check("if") || check("unless") || check("else")) {
+        if (!scanConditional()) {
+            // Error output from `scanConditional()`
+            return false;
+        }
     } else if (isIdentifierPart() || (check('#') && !check("#["))
                || check('.')) {
         TagData *data = nullptr;
         if (!scanTag(data)) {
+            // Error output from `scanTag()`
             return false;
         }
         tokens->push_back(Token(data));
@@ -115,8 +145,9 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
         tokens->push_back(Token(TokenType::EndOfPart));
     } else {
         Serial.printf(
-            "Error 1-2: Unexpected character (ASCII code: '%d')\n",
-            inFile_.peek()
+            "Error 1-2: Unexpected character (ASCII code: '%d') at %d\n",
+            inFile_.peek(),
+            inFile_.position()
         );
         return false;
     }
@@ -186,8 +217,8 @@ bool Scanner::isEndOfSource() {
 bool Scanner::nextLineIndentationIsHigher() {
     // Get total size of current indentation
     int currentSize = 0;
-    for (int size : indentationLevel_) {
-        currentSize += size;
+    for (Indentation obj : indentations_) {
+        currentSize += obj.size;
     }
 
     // Set the indentation char if not alread set
@@ -217,6 +248,25 @@ bool Scanner::nextLineIndentationIsHigher() {
     return check(higherIndentation);
 }
 
+bool Scanner::nextLineIsPartOfSameConditional() {
+    // Get total size of current indentation
+    int currentSize = 0;
+    for (Indentation obj : indentations_) {
+        currentSize += obj.size;
+    }
+
+    // Generate string with '\n' + indentation size * indentation char + "else"
+    String comparisonString = "\n";
+
+    for (int i = 0; i < currentSize; i++) {
+        comparisonString += indentationChar_;
+    }
+
+    comparisonString += "else";
+
+    return check(comparisonString);
+}
+
 bool Scanner::scanIndentation(std::vector<Token> *tokens) {
     // Set the used indentation char if not already set
     if (indentationChar_ == '.') {
@@ -225,8 +275,8 @@ bool Scanner::scanIndentation(std::vector<Token> *tokens) {
 
     // Check on what level we are
     uint level;
-    for (level = 0; level < indentationLevel_.size(); level++) {
-        int levelSize = indentationLevel_[level];
+    for (level = 0; level < indentations_.size(); level++) {
+        int levelSize = indentations_[level].size;
 
         // Create string
         String indentationString = "";
@@ -245,15 +295,17 @@ bool Scanner::scanIndentation(std::vector<Token> *tokens) {
     if (!check(indentationChar_)) {
         // We are either on the same level -> nothing must be done
         // or a smaller level -> generate dedents and remove the levels
-        while (level < indentationLevel_.size()) {
-            indentationLevel_.pop_back();
-            tokens->push_back(Token(TokenType::Dedent));
+        while (level < indentations_.size()) {
+            if (indentations_.back().type != IndentationType::Conditional) {
+                tokens->push_back(Token(TokenType::Dedent));
+            }
+            indentations_.pop_back();
         }
     } else {
         // If there are more indentation chars
         // We are either on a new level -> add a new level
         // or the indentation chars are not enough to reach the next level -> error
-        if (level == indentationLevel_.size()) {
+        if (level == indentations_.size()) {
             int newLevelSize = 0;
 
             while (check(indentationChar_)) {
@@ -261,10 +313,21 @@ bool Scanner::scanIndentation(std::vector<Token> *tokens) {
                 ignore();
             }
 
-            indentationLevel_.push_back(newLevelSize);
-            tokens->push_back(Token(TokenType::Indent));
+            // Are we in a new conditional?
+            Indentation back = indentations_.back();
+            if (back.type == IndentationType::Conditional && back.size == 0) {
+                indentations_.back().size = newLevelSize;
+            } else {
+                indentations_.push_back(
+                    Indentation(IndentationType::Default, newLevelSize)
+                );
+                tokens->push_back(Token(TokenType::Indent));
+            }
         } else {
-            Serial.printf("Error 1-3: Wrong indentation amount\n");
+            Serial.printf(
+                "Error 1-3: Wrong indentation amount at %d\n",
+                inFile_.position()
+            );
             return false;
         }
     }
@@ -273,8 +336,9 @@ bool Scanner::scanIndentation(std::vector<Token> *tokens) {
     // That means the wrong character was used for indentation
     if (check(' ') || check('\t')) {
         Serial.printf(
-            "Error 1-4: Wrong indentation character (ASCII code: '%d')\n",
-            inFile_.peek()
+            "Error 1-4: Wrong indentation character (ASCII code: '%d') at %d\n",
+            inFile_.peek(),
+            inFile_.position()
         );
         return false;
     }
@@ -370,6 +434,7 @@ bool Scanner::scanTag(TagData *&data) {
         // Get the additional attributes
         if (!scanTagAttributes(&attributes)) {
             delete text;
+            // Error output from `scanTagAttributes()`
             return false;
         }
     }
@@ -381,14 +446,16 @@ bool Scanner::scanTag(TagData *&data) {
     } else if (check(' ') || check(".\n")) {
         if (!scanTagText(text)) {
             delete text;
+            // Error output from `scanTagText()`
             return false;
         }
     } else if (!check(':') && !check('\n')) {
-        Serial.printf(
-            "Error 1-5: Unexpected character (ASCII code: '%d')\n",
-            inFile_.peek()
-        );
         delete text;
+        Serial.printf(
+            "Error 1-5: Unexpected character (ASCII code: '%d') at %d\n",
+            inFile_.peek(),
+            inFile_.position()
+        );
         return false;
     }
 
@@ -403,8 +470,9 @@ bool Scanner::scanTagAttributes(std::vector<Attribute> *attributes) {
         ignore();
     } else {
         Serial.printf(
-            "Error 1-6: Unexpected character (ASCII code: '%d')\n",
-            inFile_.peek()
+            "Error 1-6: Unexpected character (ASCII code: '%d') at %d\n",
+            inFile_.peek(),
+            inFile_.position()
         );
         return false;
     }
@@ -492,6 +560,7 @@ bool Scanner::scanTagAttributes(std::vector<Attribute> *attributes) {
 
                 if (!scanExpression(exprResult)) {
                     delete exprResult;
+                    // Error output from `scanExpression()`
                     return false;
                 }
 
@@ -500,8 +569,9 @@ bool Scanner::scanTagAttributes(std::vector<Attribute> *attributes) {
                 delete exprResult;
             } else {
                 Serial.printf(
-                    "Error 1-7: Unexpected character (ASCII code: '%d')\n",
-                    inFile_.peek()
+                    "Error 1-7: Unexpected character (ASCII code: '%d') at %d\n",
+                    inFile_.peek(),
+                    inFile_.position()
                 );
                 return false;
             }
@@ -545,6 +615,7 @@ bool Scanner::scanTagText(String *value) {
         ignore();
 
         if (!scanTagTextInline(value)) {
+            // Error output from `scanTagTextInline()`
             return false;
         }
     } else if (check(".\n")) {
@@ -552,6 +623,7 @@ bool Scanner::scanTagText(String *value) {
         ignore();
 
         if (!scanTagTextBlock(value)) {
+            // Error output from `scanTagTextBlock()`
             return false;
         }
     }
@@ -565,6 +637,7 @@ bool Scanner::scanTagTextInline(String *value) {
         // Consume until the end of the interpolation or the start of a new interpolation
         while (!check(']') && !check("#[")) {
             if (!scanTagTextPart(value)) {
+                // Error output from `scanTagTextPart()`
                 return false;
             }
         }
@@ -572,6 +645,7 @@ bool Scanner::scanTagTextInline(String *value) {
         // Consume until the '\n' or a tag interpolation start
         while (!check('\n') && !check("#[")) {
             if (!scanTagTextPart(value)) {
+                // Error output from `scanTagTextPart()`
                 return false;
             }
         }
@@ -584,6 +658,7 @@ bool Scanner::scanTagTextBlock(String *value) {
     // Consume until the end of the first line
     while (!check('\n') && !check("#[")) {
         if (!scanTagTextPart(value)) {
+            // Error output from `scanTagTextPart()`
             return false;
         }
     }
@@ -593,6 +668,7 @@ bool Scanner::scanTagTextBlock(String *value) {
         // Consume the '\n' of the current line, ignore the first (except when we are already in a block in a tag)
         if (*value != "" || inBlockInATag_) {
             if (!scanTagTextPart(value)) {
+                // Error output from `scanTagTextPart()`
                 return false;
             }
         } else {
@@ -605,6 +681,7 @@ bool Scanner::scanTagTextBlock(String *value) {
         // Consume the next line up until the '\n' or a tag interpolation start
         while (!check('\n') && !check("#[")) {
             if (!scanTagTextPart(value)) {
+                // Error output from `scanTagTextPart()`
                 return false;
             }
         }
@@ -628,8 +705,9 @@ bool Scanner::scanTagTextPart(String *value) {
         // Get the GPIO value
         uint *gpio = new uint(0);
 
-        if (!getGPIOValue(gpio)) {
+        if (!scanGPIOValue(gpio)) {
             delete gpio;
+            // Error output from `scanGPIOValue()`
             return false;
         }
 
@@ -638,8 +716,9 @@ bool Scanner::scanTagTextPart(String *value) {
 
         if (!check("}")) {
             Serial.printf(
-                "Error 1-8: Unexpected character (ASCII code: '%d')\n",
-                inFile_.peek()
+                "Error 1-8: Unexpected character (ASCII code: '%d') at %d\n",
+                inFile_.peek(),
+                inFile_.position()
             );
             return false;
         } else {
@@ -655,12 +734,20 @@ bool Scanner::scanTagTextPart(String *value) {
 bool Scanner::scanText(TextData *&data) {
     // Type of the text
     if (check('<')) {
+        // Error output from `scanTextLiteralHTML()`
         return scanTextLiteralHTML(data);
     } else if (check('|')) {
+        // Error output from `scanTextPipedText()`
         return scanTextPipedText(data);
     } else if (check(']')) {
+        // Error output from `scanTextInterpolationEnd()`
         return scanTextInterpolationEnd(data);
     } else {
+        Serial.printf(
+            "Error 1-9: Unexpected character (ASCII code: '%d') at %d\n",
+            inFile_.peek(),
+            inFile_.position()
+        );
         return false;
     }
 }
@@ -686,6 +773,7 @@ bool Scanner::scanTextPipedText(TextData *&data) {
 
     if (!scanTagTextInline(value)) {
         delete value;
+        // Error output from `scanTagTextInline()`
         return false;
     }
 
@@ -704,11 +792,13 @@ bool Scanner::scanTextInterpolationEnd(TextData *&data) {
     if (inBlockInATag_ && interpolationLevel_ == 0) {
         if (!scanTagTextBlock(value)) {
             delete value;
+            // Error output from `scanTagTextBlock()`
             return false;
         }
     } else {
         if (!scanTagTextInline(value)) {
             delete value;
+            // Error output from `scanTagTextInline()`
             return false;
         }
     }
@@ -794,7 +884,7 @@ bool Scanner::scanInclude(IncludeData *&data) {
     return true;
 }
 
-bool Scanner::getGPIOValue(uint *&result) {
+bool Scanner::scanGPIOValue(uint *&result) {
     if (check("IO_LED")) {
         ignore(6);
         *result = aalec.get_led();
@@ -820,6 +910,11 @@ bool Scanner::getGPIOValue(uint *&result) {
         *result = aalec.get_analog();
         return true;
     } else {
+        Serial.printf(
+            "Error 1-10: Unexpected character (ASCII code: '%d') at %d\n",
+            inFile_.peek(),
+            inFile_.position()
+        );
         return false;
     }
 }
@@ -835,11 +930,12 @@ bool Scanner::scanExpression(bool *&result) {
         u32 *secondExprResult = new u32(0);
         bool *secondIsTrue = new bool(false);
 
-        if (!evaluateExpression(firstExprResult, firstIsTrue)) {
+        if (!scanExpressionEvaluate(firstExprResult, firstIsTrue)) {
             delete firstExprResult;
             delete firstIsTrue;
             delete secondExprResult;
             delete secondIsTrue;
+            // Error output from `scanExpressionEvaluate()`
             return false;
         }
 
@@ -850,17 +946,23 @@ bool Scanner::scanExpression(bool *&result) {
             delete firstIsTrue;
             delete secondExprResult;
             delete secondIsTrue;
+            Serial.printf(
+                "Error 1-11: Unexpected character (ASCII code: '%d') at %d\n",
+                inFile_.peek(),
+                inFile_.position()
+            );
             return false;
         } else {
             ignore();
         }
         ignoreWhitespaces();
 
-        if (!evaluateExpression(secondExprResult, secondIsTrue)) {
+        if (!scanExpressionEvaluate(secondExprResult, secondIsTrue)) {
             delete firstExprResult;
             delete firstIsTrue;
             delete secondExprResult;
             delete secondIsTrue;
+            // Error output from `scanExpressionEvaluate()`
             return false;
         }
 
@@ -881,6 +983,11 @@ bool Scanner::scanExpression(bool *&result) {
             delete firstIsTrue;
             delete secondExprResult;
             delete secondIsTrue;
+            Serial.printf(
+                "Error 1-12: Unexpected character (ASCII code: '%d') at %d\n",
+                inFile_.peek(),
+                inFile_.position()
+            );
             return false;
         } else {
             ignore();
@@ -895,9 +1002,10 @@ bool Scanner::scanExpression(bool *&result) {
         u32 *exprResult = new u32(0);
         bool *isTrue = new bool(false);
 
-        if (!evaluateExpression(exprResult, isTrue)) {
+        if (!scanExpressionEvaluate(exprResult, isTrue)) {
             delete exprResult;
             delete isTrue;
+            // Error output from `scanExpressionEvaluate()`
             return false;
         }
 
@@ -909,7 +1017,7 @@ bool Scanner::scanExpression(bool *&result) {
     }
 }
 
-bool Scanner::evaluateExpression(u32 *&result, bool *&isTrue) {
+bool Scanner::scanExpressionEvaluate(u32 *&result, bool *&isTrue) {
     if (check("True")) {
         ignore(4);
         *result = 1;
@@ -929,16 +1037,185 @@ bool Scanner::evaluateExpression(u32 *&result, bool *&isTrue) {
         *isTrue = false;
         return true;
     } else if (check("IO_")) {
-        if (!getGPIOValue(result)) {
+        if (!scanGPIOValue(result)) {
             return false;
         }
         *isTrue = false;
         return true;
     } else {
         Serial.printf(
-            "Error 1-8: Unexpected character (ASCII code: '%d')\n",
-            inFile_.peek()
+            "Error 1-13: Unexpected character (ASCII code: '%d') at %d\n",
+            inFile_.peek(),
+            inFile_.position()
         );
         return false;
     }
+}
+
+bool Scanner::scanConditional() {
+    // If it starts with else its part of a conditional where one part was already rendered
+    if (check("else")) {
+        // While parts of this conditional exist, ignore them
+        while (check("else")) {
+            // Ignore this line until the '\n'
+            while (!check('\n')) {
+                ignore();
+            }
+
+            while (nextLineIndentationIsHigher()) {
+                // Ignore the '\n' of the current line
+                ignore();
+
+                // Ignore the next line until the '\n'
+                while (!check('\n')) {
+                    ignore();
+                }
+            }
+        }
+
+        return true;
+    }
+
+    // Ignore a new conditional until a part that should be rendered is encountered
+    while (check("if") || check("unless") || check("else")) {
+        if (check("if") || check("else if")) {
+            // Ignore the "if" (or the "else if") and following whitespaces
+            if (check("if")) {
+                ignore(2);
+            } else {
+                ignore(7);
+            }
+            ignoreWhitespaces();
+
+            // Evaluate the expression
+            bool *exprResult = new bool(false);
+            if (!scanExpression(exprResult)) {
+                delete exprResult;
+                // Error output from `scanExpression()`
+                return false;
+            }
+
+            // Ignore the following whitespace and the ':'
+            ignoreWhitespaces();
+            if (!check(":\n")) {
+                delete exprResult;
+                Serial.printf(
+                    "Error 1-14: Unexpected character (ASCII code: '%d') at %d\n",
+                    inFile_.peek(),
+                    inFile_.position()
+                );
+                return false;
+            } else {
+                ignore();
+            }
+
+            // If the exrpession evaluated to true, we are done
+            if (*exprResult) {
+                delete exprResult;
+                indentations_.push_back(Indentation(IndentationType::Conditional
+                ));
+                return true;
+            }
+
+            // Expression is false, ignore all indented parts
+            while (nextLineIndentationIsHigher()) {
+                // Ignore the '\n' of the current line
+                ignore();
+
+                // Ignore the next line until the '\n'
+                while (!check('\n')) {
+                    ignore();
+                }
+            }
+
+            // Check if the next line is part of the same conditional
+            if (nextLineIsPartOfSameConditional()) {
+                // If so ignore the newline and whitespaces till the else
+                ignoreWhitespaces(true);
+            }
+        } else if (check("unless") || check("else unless")) {
+            // Ignore the "unless" (or the "else unless") and following whitespaces
+            if (check("unless")) {
+                ignore(6);
+            } else {
+                ignore(11);
+            }
+            ignoreWhitespaces();
+
+            // Evaluate the expression
+            bool *exprResult = new bool(false);
+            if (!scanExpression(exprResult)) {
+                delete exprResult;
+                // Error output from `scanExpression()`
+                return false;
+            }
+
+            // Ignore the following whitespace and the ':'
+            ignoreWhitespaces();
+            if (!check(":\n")) {
+                delete exprResult;
+                Serial.printf(
+                    "Error 1-15: Unexpected character (ASCII code: '%d') at %d\n",
+                    inFile_.peek(),
+                    inFile_.position()
+                );
+                return false;
+            } else {
+                ignore();
+            }
+
+            // If the exrpession evaluated to false, we are done
+            if (!*exprResult) {
+                delete exprResult;
+                indentations_.push_back(Indentation(IndentationType::Conditional
+                ));
+                return true;
+            }
+
+            // Expression is true, ignore all indented parts
+            while (nextLineIndentationIsHigher()) {
+                // Ignore the '\n' of the current line
+                ignore();
+
+                // Ignore the next line until the '\n'
+                while (!check('\n')) {
+                    ignore();
+                }
+            }
+
+            // Check if the next line is part of the same conditional
+            if (nextLineIsPartOfSameConditional()) {
+                // If so ignore the newline and whitespaces till the else
+                ignoreWhitespaces(true);
+            }
+        } else if (check("else")) {
+            // Ignore the "else", following whitespace, and the ':'
+            ignore(4);
+            ignoreWhitespaces();
+            if (!check(":\n")) {
+                Serial.printf(
+                    "Error 1-16: Unexpected character (ASCII code: '%d') at %d\n",
+                    inFile_.peek(),
+                    inFile_.position()
+                );
+                return false;
+            } else {
+                ignore();
+            }
+
+            // We are done
+            indentations_.push_back(Indentation(IndentationType::Conditional));
+            return true;
+        }
+    }
+
+    if (!check('\n')) {
+        Serial.printf(
+            "Error 1-17: Unexpected character (ASCII code: '%d') at %d\n",
+            inFile_.peek(),
+            inFile_.position()
+        );
+        return false;
+    }
+    return true;
 }

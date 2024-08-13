@@ -5,6 +5,40 @@
 #include <token/token.h>
 
 /**
+ * @brief Different types of indentations
+ */
+enum class IndentationType {
+    Default,
+    BlockExpansion,
+    TagInterpolation,
+    Conditional,
+};
+
+/**
+ * @brief Info about the an indentation level
+ */
+class Indentation {
+   public:
+    /**
+     * @brief Type of this level
+     */
+    IndentationType type;
+
+    /**
+     * @brief Size of this level
+     */
+    int size;
+
+    /**
+     * @brief Construct a new Indentation object
+     *
+     * @param type Type of this indentation
+     * @param size Size of this indentation, defaults to 0
+     */
+    Indentation(IndentationType type, int size = 0);
+};
+
+/**
  * @brief Scanner class that tokenizes a .pug file
  */
 class Scanner {
@@ -21,9 +55,9 @@ class Scanner {
     char indentationChar_;
 
     /**
-     * @brief The amount of chars used to indent each level
+     * @brief Info about the indentation levels
      */
-    std::vector<int> indentationLevel_;
+    std::vector<Indentation> indentations_;
 
     /**
      * @brief Wheter we are in a Block in a Tag Text
@@ -56,8 +90,7 @@ class Scanner {
      *               Might start with Indent/Dedent Tokens,
      *               followed by another Token,
      *               ends with an EndOfPart or EndOfSource Token.
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see serial output for errors
      */
     bool scanPart(std::vector<Token> *tokens);
 
@@ -68,8 +101,7 @@ class Scanner {
      * @brief Compare the nexr char in the source to the given char
      *
      * @param value The character that is being compared
-     * @return true The chars match
-     * @return false The chars dont match
+     * @return bool If the chars match
      */
     bool check(char value);
 
@@ -77,8 +109,7 @@ class Scanner {
      * @brief Compare the next part of the source to the given string
      *
      * @param value The string that is being compared
-     * @return true The string matches
-     * @return false The string does not match
+     * @return bool If the strings matche
      */
     bool check(String value);
 
@@ -107,42 +138,45 @@ class Scanner {
     /**
      * @brief Checks if the source starts with a whitespace (32: ' ', 9: '\t')
      *
-     * @return true The source starts with a whitespace (32: ' ', 9: '\t')
-     * @return false The source doesnt starts with a whitespace (32: ' ', 9: '\t')
+     * @return bool Wether the source starts with a whitespace (32: ' ', 9: '\t')
      */
     bool isWhitespace();
 
     /**
      * @brief Checks if the source starts with a digit
      *
-     * @return true The source starts with a digit
-     * @return false The source doesnt start with a digit
+     * @return bool Wether the source starts with a digit
      */
     bool isDigit();
 
     /**
      * @brief Checks if the source starts with a alpha numeric char
      *
-     * @return true The source starts with a alpha numeric char
-     * @return false The source doesnt starts with a alpha numeric char
+     * @return bool Wether the source starts with a alpha numeric char
      */
     bool isIdentifierPart();
 
     /**
      * @brief Checks if the source is at the end
      *
-     * @return true The source is at the end
-     * @return false The source isnt at the end
+     * @return bool Wether the source is at the end
      */
     bool isEndOfSource();
 
     /**
      * @brief Checks if the next line starts with more indentation than the current line
      *
-     * @return true The next line starts with more indentation than the current line
-     * @return false The next line does not start with more indentation than the current line
+     * @return bool Wether the next line starts with more indentation than the current line
      */
     bool nextLineIndentationIsHigher();
+
+    /**
+     * @brief Checks if the next line has the same indentation and starts with else
+     *        Expects a '\n' at the beginning
+     *
+     * @return bool Wether the next line is part of the same conditional
+     */
+    bool nextLineIsPartOfSameConditional();
 
     // Scan related funcitons
 
@@ -151,8 +185,7 @@ class Scanner {
      *        Expects a whitespace at the beginning
      *
      * @param tokens Appends the Indent/Dedent Tokens to this vector
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see serial output for errors
      */
     bool scanIndentation(std::vector<Token> *tokens);
 
@@ -161,8 +194,7 @@ class Scanner {
      *        Expects "doctype" at the beginning
      *
      * @param data Writes the data to this pointer
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wther scanning was successfull, see serial output for errors
      */
     bool scanDoctype(DoctypeData *&data);
 
@@ -171,8 +203,7 @@ class Scanner {
      *        Expects a identifier part at the beginning
      *
      * @param data Writes the data to this pointer
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see serial output for errors
      */
     bool scanTag(TagData *&data);
 
@@ -181,8 +212,7 @@ class Scanner {
      *        Expects a '(' at the beginning
      *
      * @param attributes Appends the attributes to this vector
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see serial output for errors
      */
     bool scanTagAttributes(std::vector<Attribute> *attributes);
 
@@ -191,8 +221,7 @@ class Scanner {
      *        Expects a space or a ".\n" at the beginning
      *
      * @param value The scanned text
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see serial output for errors
      */
     bool scanTagText(String *value);
 
@@ -201,8 +230,7 @@ class Scanner {
      *        Expects the space already removed
      *
      * @param value The scanned text
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see serial output for errors
      */
     bool scanTagTextInline(String *value);
 
@@ -211,8 +239,7 @@ class Scanner {
      *        Expects the '.' already removed
      *
      * @param value The scanned text
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see serial output for errors
      */
     bool scanTagTextBlock(String *value);
 
@@ -220,8 +247,7 @@ class Scanner {
      * @brief Scans the next part of the tag text and appends it to the value.
      *
      * @param value The scanned text is appended to this string
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see serial output for errors
      */
     bool scanTagTextPart(String *value);
 
@@ -230,8 +256,7 @@ class Scanner {
      *        Expects a '<', '|', or ']' at the beginning.
      *
      * @param data Writes the data to this pointer
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see serial output for errors
      */
     bool scanText(TextData *&data);
 
@@ -240,8 +265,7 @@ class Scanner {
      *        Expects a '<' at the beginning.
      *
      * @param data Writes the data to this pointer
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see serial output for errors
      */
     bool scanTextLiteralHTML(TextData *&data);
 
@@ -250,8 +274,7 @@ class Scanner {
      *        Expects a '|' at the beginning.
      *
      * @param data Writes the data to this pointer
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see serial output for errors
      */
     bool scanTextPipedText(TextData *&data);
 
@@ -260,8 +283,7 @@ class Scanner {
      *        Expects a ']' at the beginning.
      *
      * @param data Writes the data to this pointer
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see serial output for errors
      */
     bool scanTextInterpolationEnd(TextData *&data);
 
@@ -269,8 +291,7 @@ class Scanner {
      * @brief Ignores a comment.
      *        Expects a "//-" at the beginning
      *
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see serial output for errors
      */
     bool ignoreComment();
 
@@ -279,8 +300,7 @@ class Scanner {
      *        Expects a "//" at the beginning
      *
      * @param data Writes the data to this pointer
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see serial output for errors
      */
     bool scanComment(CommentData *&data);
 
@@ -289,8 +309,7 @@ class Scanner {
      *        Expects a "include" at the beginning
      *
      * @param data Writes the data to this pointer
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see serial output for errors
      */
     bool scanInclude(IncludeData *&data);
 
@@ -299,18 +318,16 @@ class Scanner {
      *        Expects "IO_" at the beginning
      *
      * @param result The value of the GPIO Pin is written to this pointer
-     * @return true Operation was successfull
-     * @return false Operation encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see serial output for errors
      */
-    bool getGPIOValue(uint *&result);
+    bool scanGPIOValue(uint *&result);
 
     /**
      * @brief Evaluates an expression.
      *        Expects a '(', "True", "False", "IO_", or digit at the beginning
      *
      * @param result Result of the expression evaluation
-     * @return true Scanning was successfull
-     * @return false Scanning encountered an error, see the serial output for more information
+     * @return bool Wether scanning was successfull, see the serial output for more information
      */
     bool scanExpression(bool *&result);
 
@@ -320,10 +337,17 @@ class Scanner {
      *
      * @param result Result of the expression evaluation
      * @param isTrue Wheter the expression was `True`
-     * @return true Evaluation was successfull
-     * @return false Evaluation encountered an error, see the serial output for more information
+     * @return bool Wheter evaluation was successfull, see serial output for errors
      */
-    bool evaluateExpression(u32 *&result, bool *&isTrue);
+    bool scanExpressionEvaluate(u32 *&result, bool *&isTrue);
+
+    /**
+     * @brief Scans a conditional.
+     *        Expects "if", "unless", or "else" at the beginning
+     *
+     * @return bool Wether scanning was successfull, see serial output for errors
+     */
+    bool scanConditional();
 };
 
 #endif  // SCANNER_H

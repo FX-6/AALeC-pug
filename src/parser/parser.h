@@ -73,6 +73,8 @@ class Parser {
 
     /**
      * @brief Parse the source
+     *
+     * @return bool Wheter the parsing was successful, see serial output for errors
      */
     bool parse();
 
@@ -89,8 +91,7 @@ class Parser {
      *        eg: img, br
      *
      * @param tag The tag
-     * @return true Its a void element by default
-     * @return false Its not a void element by default
+     * @return bool If it is a void element
      */
     bool isVoidElement(String tag);
 
@@ -143,6 +144,7 @@ class Parser {
      * @brief Parse a Include Token
      *
      * @param data Pointer to the include data
+     * @return bool Wheter the parsing was successful, see serial output for errors
      */
     bool parseInclude(IncludeData *data);
 };

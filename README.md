@@ -27,7 +27,7 @@ Wont do: 🟥
   - 🟩 Quoted Attributes
   - 🟥 ~~Attribute Interpolation~~
   - 🟩 Unescaped Attributes
-  - 🟩 Boolean Attributes (see below for Conditional Expressions)
+  - 🟩 Boolean Attributes (see below for Expressions)
   - 🟥 ~~Style Attributes~~
   - 🟥 ~~Class Attributes~~
   - 🟩 Class Literal
@@ -45,9 +45,9 @@ Wont do: 🟥
   - 🟩 Basic
   - 🟩 Block Comments
   - 🟩 Conditional Comments
-- 🟨 Conditionals
+- 🟩 Conditionals
   - 🟥 ~~Basic~~
-  - 🟨 GPIO Pin Conditionals (see below for Conditional Expressions)
+  - 🟩 GPIO Pin Conditionals (see below for Conditionals)
 - 🟩 Doctype
   - 🟩 Doctype Shortcuts
   - 🟩 Custom Doctypes
@@ -69,7 +69,7 @@ Wont do: 🟥
   - 🟥 ~~String Interpolation, Escaped~~
   - 🟥 ~~String Interpolation, Unescaped~~
   - 🟩 Tag Interpolation
-  - 🟩 GPIO Interpolation (with `#{GPIO ID}`)
+  - 🟩 GPIO Interpolation (with `#{GPIO_ID}`, see below for GPIO IDs)
 - 🟥 ~~Iteration~~
   - 🟥 ~~each~~
   - 🟥 ~~while~~
@@ -89,9 +89,18 @@ Wont do: 🟥
   - 🟩 Block Expansion
   - 🟩 Self-Closing Tags
 
-### Conditional Expressions
+### Conditionals
 
-Conditional Expressions can have one of the following formats:
+Can be:
+- `if <expression>:`, renders if the expression evaluates to `true`
+- `unless <expression>:`, renders if the expression evaluates to `false`
+- `else if <expression>:`, renders if the previous conditionals did not render and the expression evaluates to `true`
+- `else unless <expression>:`, renders if the previous conditionals did not render and the expression evaluates to `false`
+- `else:`, renders if the previus conditionals did not render
+
+### Expressions
+
+Expressions can have one of the following formats:
 - `<key>`, evaluates to `true` if the key is any number not 0
 - `(<key> = <key>)`, ecalutes to `true` if the keys match
 
