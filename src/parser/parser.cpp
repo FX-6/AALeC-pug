@@ -26,6 +26,7 @@ bool Parser::parse() {
         std::vector<Token> *tokens = new std::vector<Token>();
         if (!scanner_.scanPart(tokens)) {
             delete tokens;
+            outFile_.close();
             return false;
         }
         Token token = nextToken(tokens);
@@ -62,6 +63,7 @@ bool Parser::parse() {
             case TokenType::Include:
                 if (!parseInclude(token.include)) {
                     delete tokens;
+                    outFile_.close();
                     return false;
                 }
                 token = nextToken(tokens);
@@ -81,8 +83,9 @@ bool Parser::parse() {
             delete tokens;
             break;
         } else if (token.type != TokenType::EndOfPart || tokens->size() > 0) {
-            Serial.printf("Error 2-2: unexpected token\n");
             delete tokens;
+            outFile_.close();
+            Serial.printf("Error 2-2: unexpected token\n");
             return false;
         }
     }

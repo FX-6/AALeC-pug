@@ -7,29 +7,29 @@ Indentation::Indentation(IndentationType type, int size) :
     size(size) {}
 
 Scanner::Scanner(String inPath) :
+    inPath_(inPath),
+    lastPosition_(0),
     indentationChar_('.'),
     indentations_(std::vector<Indentation>()),
     inBlockInATag_(false),
-    interpolationLevel_(0) {
-    inFile_ = LittleFS.open(inPath, "r");
-
-    if (!inFile_) {
-        Serial.printf(
-            "Error 1-1: Failed to open file for reading '%s'\n",
-            inPath.c_str()
-        );
-        return;
-    }
-}
-
-Scanner::~Scanner() {
-    inFile_.close();
-}
+    interpolationLevel_(0) {}
 
 bool Scanner::scanPart(std::vector<Token> *tokens) {
+    inFile_ = LittleFS.open(inPath_, "r");
+    if (!inFile_ || !inFile_.isFile()) {
+        Serial.printf(
+            "Error 1-1: Failed to open file for reading '%s'\n",
+            inPath_.c_str()
+        );
+        inFile_.close();
+        return false;
+    }
+    inFile_.seek(lastPosition_, SeekSet);
+
     // Scan the indentation if thers is any
     if (isWhitespace()) {
         if (!scanIndentation(tokens)) {
+            inFile_.close();
             // Error output from `scanIndentation()`
             return false;
         }
@@ -90,6 +90,8 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
     if (check("doctype")) {
         DoctypeData *data = nullptr;
         if (!scanDoctype(data)) {
+            delete data;
+            inFile_.close();
             // Error output from `scanDoctype()`
             return false;
         }
@@ -97,18 +99,23 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
     } else if (check("<") || check('|') || check(']')) {
         TextData *data = nullptr;
         if (!scanText(data)) {
+            delete data;
+            inFile_.close();
             // Error output from `scanText()`
             return false;
         }
         tokens->push_back(Token(data));
     } else if (check("//-")) {
         if (!ignoreComment()) {
+            inFile_.close();
             // Error output from `ignoreComment()`
             return false;
         }
     } else if (check("//")) {
         CommentData *data = nullptr;
         if (!scanComment(data)) {
+            delete data;
+            inFile_.close();
             // Error output from `scanComment()`
             return false;
         }
@@ -116,12 +123,15 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
     } else if (check("include")) {
         IncludeData *data = nullptr;
         if (!scanInclude(data)) {
+            delete data;
+            inFile_.close();
             // Error output from `scanInclude()`
             return false;
         }
         tokens->push_back(Token(data));
     } else if (check("if") || check("unless") || check("else")) {
         if (!scanConditional()) {
+            inFile_.close();
             // Error output from `scanConditional()`
             return false;
         }
@@ -129,6 +139,8 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
                || check('.')) {
         TagData *data = nullptr;
         if (!scanTag(data)) {
+            delete data;
+            inFile_.close();
             // Error output from `scanTag()`
             return false;
         }
@@ -144,15 +156,24 @@ bool Scanner::scanPart(std::vector<Token> *tokens) {
     } else if (check(':') || check("#[") || check(']')) {
         tokens->push_back(Token(TokenType::EndOfPart));
     } else {
-        Serial.printf(
-            "Error 1-2: Unexpected character (ASCII code: '%d') at %d\n",
-            inFile_.peek(),
-            inFile_.position()
-        );
+        inFile_.close();
+        printErrorUnexpectedChar("Error 1-2");
         return false;
     }
 
+    lastPosition_ = inFile_.position();
+    inFile_.close();
     return true;
+}
+
+void Scanner::printErrorUnexpectedChar(String name) {
+    Serial.printf(
+        "%s: Unexpected character (ASCII code: '%d') at %s:%d\n",
+        name.c_str(),
+        inFile_.peek(),
+        inPath_.c_str(),
+        inFile_.position()
+    );
 }
 
 bool Scanner::check(char value) {
@@ -325,7 +346,8 @@ bool Scanner::scanIndentation(std::vector<Token> *tokens) {
             }
         } else {
             Serial.printf(
-                "Error 1-3: Wrong indentation amount at %d\n",
+                "Error 1-3: Wrong indentation amount at %s:%d\n",
+                inPath_.c_str(),
                 inFile_.position()
             );
             return false;
@@ -336,8 +358,9 @@ bool Scanner::scanIndentation(std::vector<Token> *tokens) {
     // That means the wrong character was used for indentation
     if (check(' ') || check('\t')) {
         Serial.printf(
-            "Error 1-4: Wrong indentation character (ASCII code: '%d') at %d\n",
+            "Error 1-4: Wrong indentation character (ASCII code: '%d') at %s:%d\n",
             inFile_.peek(),
+            inPath_.c_str(),
             inFile_.position()
         );
         return false;
@@ -451,11 +474,7 @@ bool Scanner::scanTag(TagData *&data) {
         }
     } else if (!check(':') && !check('\n')) {
         delete text;
-        Serial.printf(
-            "Error 1-5: Unexpected character (ASCII code: '%d') at %d\n",
-            inFile_.peek(),
-            inFile_.position()
-        );
+        printErrorUnexpectedChar("Error 1-5");
         return false;
     }
 
@@ -469,11 +488,7 @@ bool Scanner::scanTagAttributes(std::vector<Attribute> *attributes) {
     if (check('(')) {
         ignore();
     } else {
-        Serial.printf(
-            "Error 1-6: Unexpected character (ASCII code: '%d') at %d\n",
-            inFile_.peek(),
-            inFile_.position()
-        );
+        printErrorUnexpectedChar("Error 1-6");
         return false;
     }
 
@@ -568,11 +583,7 @@ bool Scanner::scanTagAttributes(std::vector<Attribute> *attributes) {
                 checked = *exprResult;
                 delete exprResult;
             } else {
-                Serial.printf(
-                    "Error 1-7: Unexpected character (ASCII code: '%d') at %d\n",
-                    inFile_.peek(),
-                    inFile_.position()
-                );
+                printErrorUnexpectedChar("Error 1-7");
                 return false;
             }
         } else {
@@ -715,11 +726,7 @@ bool Scanner::scanTagTextPart(String *value) {
         delete gpio;
 
         if (!check("}")) {
-            Serial.printf(
-                "Error 1-8: Unexpected character (ASCII code: '%d') at %d\n",
-                inFile_.peek(),
-                inFile_.position()
-            );
+            printErrorUnexpectedChar("Error 1-8");
             return false;
         } else {
             ignore();
@@ -743,11 +750,7 @@ bool Scanner::scanText(TextData *&data) {
         // Error output from `scanTextInterpolationEnd()`
         return scanTextInterpolationEnd(data);
     } else {
-        Serial.printf(
-            "Error 1-9: Unexpected character (ASCII code: '%d') at %d\n",
-            inFile_.peek(),
-            inFile_.position()
-        );
+        printErrorUnexpectedChar("Error 1-9");
         return false;
     }
 }
@@ -910,11 +913,7 @@ bool Scanner::scanGPIOValue(uint *&result) {
         *result = aalec.get_analog();
         return true;
     } else {
-        Serial.printf(
-            "Error 1-10: Unexpected character (ASCII code: '%d') at %d\n",
-            inFile_.peek(),
-            inFile_.position()
-        );
+        printErrorUnexpectedChar("Error 1-10");
         return false;
     }
 }
@@ -946,11 +945,8 @@ bool Scanner::scanExpression(bool *&result) {
             delete firstIsTrue;
             delete secondExprResult;
             delete secondIsTrue;
-            Serial.printf(
-                "Error 1-11: Unexpected character (ASCII code: '%d') at %d\n",
-                inFile_.peek(),
-                inFile_.position()
-            );
+
+            printErrorUnexpectedChar("Error 1-11");
             return false;
         } else {
             ignore();
@@ -983,11 +979,7 @@ bool Scanner::scanExpression(bool *&result) {
             delete firstIsTrue;
             delete secondExprResult;
             delete secondIsTrue;
-            Serial.printf(
-                "Error 1-12: Unexpected character (ASCII code: '%d') at %d\n",
-                inFile_.peek(),
-                inFile_.position()
-            );
+            printErrorUnexpectedChar("Error 1-12");
             return false;
         } else {
             ignore();
@@ -1043,11 +1035,7 @@ bool Scanner::scanExpressionEvaluate(u32 *&result, bool *&isTrue) {
         *isTrue = false;
         return true;
     } else {
-        Serial.printf(
-            "Error 1-13: Unexpected character (ASCII code: '%d') at %d\n",
-            inFile_.peek(),
-            inFile_.position()
-        );
+        printErrorUnexpectedChar("Error 1-13");
         return false;
     }
 }
@@ -1099,11 +1087,7 @@ bool Scanner::scanConditional() {
             ignoreWhitespaces();
             if (!check(":\n")) {
                 delete exprResult;
-                Serial.printf(
-                    "Error 1-14: Unexpected character (ASCII code: '%d') at %d\n",
-                    inFile_.peek(),
-                    inFile_.position()
-                );
+                printErrorUnexpectedChar("Error 1-14");
                 return false;
             } else {
                 ignore();
@@ -1154,11 +1138,7 @@ bool Scanner::scanConditional() {
             ignoreWhitespaces();
             if (!check(":\n")) {
                 delete exprResult;
-                Serial.printf(
-                    "Error 1-15: Unexpected character (ASCII code: '%d') at %d\n",
-                    inFile_.peek(),
-                    inFile_.position()
-                );
+                printErrorUnexpectedChar("Error 1-15");
                 return false;
             } else {
                 ignore();
@@ -1193,11 +1173,7 @@ bool Scanner::scanConditional() {
             ignore(4);
             ignoreWhitespaces();
             if (!check(":\n")) {
-                Serial.printf(
-                    "Error 1-16: Unexpected character (ASCII code: '%d') at %d\n",
-                    inFile_.peek(),
-                    inFile_.position()
-                );
+                printErrorUnexpectedChar("Error 1-16");
                 return false;
             } else {
                 ignore();
@@ -1210,11 +1186,7 @@ bool Scanner::scanConditional() {
     }
 
     if (!check('\n')) {
-        Serial.printf(
-            "Error 1-17: Unexpected character (ASCII code: '%d') at %d\n",
-            inFile_.peek(),
-            inFile_.position()
-        );
+        printErrorUnexpectedChar("Error 1-17");
         return false;
     }
     return true;

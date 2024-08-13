@@ -44,9 +44,14 @@ class Indentation {
 class Scanner {
    private:
     /**
-     * @brief The source file that is being tokenized
+     * @brief The path to the source file that is being tokenized
      */
-    File inFile_;
+    String inPath_;
+
+    /**
+     * @brief Position the scanner was at when the if finished scanning the last part
+     */
+    int lastPosition_;
 
     /**
      * @brief The character that is used for indentation.
@@ -70,6 +75,11 @@ class Scanner {
      */
     int interpolationLevel_;
 
+    /**
+     * @brief The source file that is being tokenized
+     */
+    File inFile_;
+
    public:
     /**
      * @brief Construct a new Scanner object
@@ -77,11 +87,6 @@ class Scanner {
      * @param inPath Path to the .pug file
      */
     Scanner(String inPath);
-
-    /**
-     * @brief Destroy the Scanner object
-     */
-    ~Scanner();
 
     /**
      * @brief Scan part of the source and return the tokens
@@ -96,6 +101,11 @@ class Scanner {
 
    private:
     // Helper functions
+
+    /**
+     * @brief Prints the "{name}: Unexpected character (ASCII code: '{code}') at {inPath_}:{position}" message
+     */
+    void printErrorUnexpectedChar(String name);
 
     /**
      * @brief Compare the nexr char in the source to the given char
