@@ -7,7 +7,6 @@ Parser::Parser(String inPath, String outPath, DoctypeDialect doctype) :
     doctype_(doctype),
     scanner_(Scanner(inPath)),
     tags_(std::vector<String>()),
-    indentet_(false),
     addNewlineFor_(TextType::InnerText) {}
 
 bool Parser::parse() {
@@ -32,13 +31,20 @@ bool Parser::parse() {
 
         // Handle indentation
         if (token.type == TokenType::Indent) {
-            indentet_ = true;
             token = nextToken(tokens);
         } else if (token.type == TokenType::Dedent) {
+            // Close the current level
+            closeTag();
+
+            // Close all dedented levels
             while (token.type == TokenType::Dedent) {
                 closeTag();
                 token = nextToken(tokens);
             }
+        } else if (token.type != TokenType::EndOfPart
+                   && token.type != TokenType::EndOfSource) {
+            // Close the current level
+            closeTag();
         }
 
         // Parse the main token
@@ -121,14 +127,6 @@ void Parser::closeTag() {
     }
 }
 
-void Parser::closeTagIfNecessary() {
-    if (!indentet_) {
-        closeTag();
-    } else {
-        indentet_ = false;
-    }
-}
-
 void Parser::handleTextNewline(TextType textType) {
     if (textType != TextType::InnerText) {
         if (addNewlineFor_ == textType) {
@@ -161,11 +159,11 @@ void Parser::parseDoctype(DoctypeData data) {
 
     // Append the HTML to the output
     outFile_.print(data.toHTMLString());
+
+    tags_.push_back("");
 }
 
 void Parser::parseTag(TagData data) {
-    // Close previous tag if not indentet
-    closeTagIfNecessary();
     // Handle the pipe newline
     handleTextNewline();
 
@@ -208,8 +206,6 @@ void Parser::parseTag(TagData data) {
 }
 
 void Parser::parseText(TextData data) {
-    // Close previous tag if not indentet
-    closeTagIfNecessary();
     // Handle the pipe newline
     handleTextNewline(data.textType);
 
@@ -220,8 +216,6 @@ void Parser::parseText(TextData data) {
 }
 
 void Parser::parseComment(CommentData data) {
-    // Close previous tag if not indentet
-    closeTagIfNecessary();
     // Handle the pipe newline
     handleTextNewline();
 
@@ -232,8 +226,6 @@ void Parser::parseComment(CommentData data) {
 }
 
 bool Parser::parseInclude(IncludeData data) {
-    // Close previous tag if not indentet
-    closeTagIfNecessary();
     // Handle the pipe newline
     handleTextNewline();
 

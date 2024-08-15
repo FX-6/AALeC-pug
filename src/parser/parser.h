@@ -48,11 +48,6 @@ class Parser {
     std::vector<String> tags_;
 
     /**
-     * @brief Wheter this line was indentet
-     */
-    bool indentet_;
-
-    /**
      * @brief Wheter there should be a new line before the tag if it is this text type
      */
     TextType addNewlineFor_;
@@ -99,11 +94,6 @@ class Parser {
      * @brief Close the last opened tag
      */
     void closeTag();
-
-    /**
-     * @brief Close the last opened tag if it wasnt indentet
-     */
-    void closeTagIfNecessary();
 
     /**
      * @brief Handle the text newline
