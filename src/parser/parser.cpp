@@ -140,6 +140,9 @@ void Parser::handleTextNewline(TextType textType) {
 }
 
 void Parser::parseDoctype(DoctypeData data) {
+    // Handle the pipe newline
+    handleTextNewline();
+
     // Set the current doctype if its not set yet
     if (doctype_ == DoctypeDialect::None) {
         switch (data.doctypeType) {
