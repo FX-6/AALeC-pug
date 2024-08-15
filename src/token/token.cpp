@@ -43,26 +43,17 @@ String DoctypeData::toHTMLString() {
     }
 }
 
-Attribute::Attribute() :
-    key(""),
-    value(""),
-    booleanAttribute(false),
-    checked(false),
-    emptyAttribute(true) {}
+Attribute::Attribute() : key(""), booleanAttribute(false), value("") {}
+
+Attribute::Attribute(String key) :
+    key(key),
+    booleanAttribute(true),
+    value("") {}
 
 Attribute::Attribute(String key, String value) :
     key(key),
-    value(value),
     booleanAttribute(false),
-    checked(false),
-    emptyAttribute(false) {}
-
-Attribute::Attribute(String key, bool checked) :
-    key(key),
-    value(""),
-    booleanAttribute(true),
-    checked(checked),
-    emptyAttribute(false) {}
+    value(value) {}
 
 TagData::TagData() : name(""), attributes(), isVoidElement(false), text("") {}
 

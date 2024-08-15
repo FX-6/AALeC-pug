@@ -506,23 +506,24 @@ bool Scanner::scanTagAttributes(std::vector<Attribute> &attributes) {
         return false;
     }
 
-    while (!check(')')) {
-        // To allow an empty key with value
-        bool quotedAttribute = false;
+    // Ignore commas and whitespaces before the first attribute
+    ignoreWhitespaces(true);
+    while (check(',')) {
+        ignore();
+        ignoreWhitespaces(true);
+    }
 
+    while (!check(')')) {
         // Ignore whitespaces before the attribute
         ignoreWhitespaces(true);
 
         // Get the key (possibly quoted)
         String key = "";
         if (check('"') || check('\'')) {
-            quotedAttribute = true;
-
             // Get the quote
             char quote = consume()[0];
 
             // Consume until the quote
-            // Backslash escaping doesnt matter
             while (!check(quote)) {
                 key += consume();
             }
@@ -561,7 +562,6 @@ bool Scanner::scanTagAttributes(std::vector<Attribute> &attributes) {
                 char quote = consume()[0];
 
                 // Consume until the quote
-                // ToDo: Backslash escaping
                 while (!check(quote)) {
                     String c = consume();
 
@@ -602,21 +602,15 @@ bool Scanner::scanTagAttributes(std::vector<Attribute> &attributes) {
 
         // Ignore whitespaces and the possible commas after the attribute
         ignoreWhitespaces(true);
-        if (check(',')) {
+        while (check(',')) {
             ignore();
             ignoreWhitespaces(true);
-
-            // Was it an empty space before a comma?
-            if (key == "" && !quotedAttribute) {
-                attributes.push_back(Attribute());
-                continue;
-            }
         }
 
         // Add the attribute
-        if (booleanAttribute) {
-            attributes.push_back(Attribute(key, checked));
-        } else {
+        if (booleanAttribute && checked) {
+            attributes.push_back(Attribute(key));
+        } else if (!booleanAttribute) {
             attributes.push_back(Attribute(key, value));
         }
     }

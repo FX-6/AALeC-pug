@@ -174,11 +174,6 @@ void Parser::parseTag(TagData data) {
 
     // Add attributes
     for (Attribute attribute : data.attributes) {
-        // Skip boolean attributes with no value
-        if (attribute.booleanAttribute && !attribute.checked) {
-            continue;
-        }
-
         // Add the attribute
         outFile_.printf(" %s", attribute.key.c_str());
         if (attribute.booleanAttribute && doctype_ != DoctypeDialect::HTML) {

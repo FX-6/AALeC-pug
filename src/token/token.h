@@ -93,26 +93,15 @@ class Attribute {
     String key;
 
     /**
-     * @brief When the attribute is not a boolean attribute:
-     *        The value of the attribute
-     */
-    String value;
-
-    /**
-     * @brief If the attribute is a boolean attribute
+     * @brief Wether the attribute is a true boolean attribute or a key value attribute
      */
     bool booleanAttribute;
 
     /**
-     * @brief When the attribute is a boolean attribute:
-     *        Wheter the attribute is checked or not
+     * @brief When the attribute is not a boolean attribute:
+     *        The value of the attribute
      */
-    bool checked;
-
-    /**
-     * @brief If the attribute was generated from an empty space between two commas
-     */
-    bool emptyAttribute;
+    String value;
 
     /**
      * @brief Construct a new empty Attribute object
@@ -120,20 +109,19 @@ class Attribute {
     Attribute();
 
     /**
-     * @brief Construct a new Attribute object, when its not a boolean attribute
+     * @brief Construct a new Attribute object, when its a true boolean attribute
+     *
+     * @param key The key of the attribute
+     */
+    Attribute(String key);
+
+    /**
+     * @brief Construct a new Attribute object, when its a key value attribute
      *
      * @param key The key of the attribute
      * @param value The value of the attribute
      */
     Attribute(String key, String value);
-
-    /**
-     * @brief Construct a new Attribute object, when its a boolean attribute
-     *
-     * @param key The key of the attribute
-     * @param checked Wheter the boolean attribute is checked or not
-     */
-    Attribute(String key, bool checked);
 };
 
 /**
