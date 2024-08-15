@@ -399,27 +399,7 @@ bool Scanner::scanDoctype(DoctypeData &data) {
     }
 
     // Create the data
-    if (value == "html" || value == "") {
-        data = DoctypeData(value, DoctypeShorthand::Html);
-    } else if (value == "xml") {
-        data = DoctypeData(value, DoctypeShorthand::Xml);
-    } else if (value == "transitional") {
-        data = DoctypeData(value, DoctypeShorthand::Transitional);
-    } else if (value == "strict") {
-        data = DoctypeData(value, DoctypeShorthand::Strict);
-    } else if (value == "frameset") {
-        data = DoctypeData(value, DoctypeShorthand::Frameset);
-    } else if (value == "1.1") {
-        data = DoctypeData(value, DoctypeShorthand::OneDotOne);
-    } else if (value == "basic") {
-        data = DoctypeData(value, DoctypeShorthand::Basic);
-    } else if (value == "mobile") {
-        data = DoctypeData(value, DoctypeShorthand::Mobile);
-    } else if (value == "plist") {
-        data = DoctypeData(value, DoctypeShorthand::Plist);
-    } else {
-        data = DoctypeData(value, DoctypeShorthand::Other);
-    }
+    data = DoctypeData(value);
 
     return true;
 }

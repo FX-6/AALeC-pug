@@ -69,9 +69,8 @@ class DoctypeData {
      * @brief Construct a new Doctype Data object
      *
      * @param value The value of the doctype as found in the source code
-     * @param doctypeType What shortcut was used
      */
-    DoctypeData(String value, DoctypeShorthand doctypeType);
+    DoctypeData(String value);
 
     /**
      * @brief Convert the doctype token to an HTML string

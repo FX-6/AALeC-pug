@@ -14,9 +14,29 @@ Token::Token(IncludeData data) : type(TokenType::Include), include(data) {}
 
 DoctypeData::DoctypeData() : value(""), doctypeType(DoctypeShorthand::Other) {}
 
-DoctypeData::DoctypeData(String value, DoctypeShorthand doctypeType) :
-    value(value),
-    doctypeType(doctypeType) {}
+DoctypeData::DoctypeData(String value) : value(value) {
+    if (value == "html" || value == "") {
+        doctypeType = DoctypeShorthand::Html;
+    } else if (value == "xml") {
+        doctypeType = DoctypeShorthand::Xml;
+    } else if (value == "transitional") {
+        doctypeType = DoctypeShorthand::Transitional;
+    } else if (value == "strict") {
+        doctypeType = DoctypeShorthand::Strict;
+    } else if (value == "frameset") {
+        doctypeType = DoctypeShorthand::Frameset;
+    } else if (value == "1.1") {
+        doctypeType = DoctypeShorthand::OneDotOne;
+    } else if (value == "basic") {
+        doctypeType = DoctypeShorthand::Basic;
+    } else if (value == "mobile") {
+        doctypeType = DoctypeShorthand::Mobile;
+    } else if (value == "plist") {
+        doctypeType = DoctypeShorthand::Plist;
+    } else {
+        doctypeType = DoctypeShorthand::Other;
+    }
+}
 
 String DoctypeData::toHTMLString() {
     switch (doctypeType) {
